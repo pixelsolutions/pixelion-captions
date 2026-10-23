@@ -4,6 +4,7 @@
 #include <util/platform.h>
 
 #include "auth-service.h"
+#include "feedback-dialog.h"
 #include "live-session.h"
 #include "platform/windows/tls-backend.h"
 #include "plugin-debug-log.h"
@@ -2292,8 +2293,15 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	auto *privacyLink = new QLabel(QStringLiteral("<a href=\"https://pixelion.ai/privacy\">Privacy policy</a>"), content);
 	privacyLink->setOpenExternalLinks(true);
 	privacyLink->setTextInteractionFlags(Qt::LinksAccessibleByMouse | Qt::LinksAccessibleByKeyboard);
-	layout->addWidget(privacyLink);
-
+	auto *footerLinks = new QHBoxLayout;
+	footerLinks->setSpacing(16);
+	footerLinks->addWidget(privacyLink);
+	auto *feedbackLink = new QLabel(QStringLiteral("<a href=\"feedback\">Send Feedback</a>"), content);
+	feedbackLink->setTextInteractionFlags(Qt::LinksAccessibleByMouse | Qt::LinksAccessibleByKeyboard);
+	QObject::connect(feedbackLink, &QLabel::linkActivated, root, [root] { showFeedbackDialog(root); });
+	footerLinks->addWidget(feedbackLink);
+	footerLinks->addStretch(1);
+	layout->addLayout(footerLinks);
 	layout->addStretch(1);
 	scroll->setWidget(content);
 	outer->addWidget(scroll);

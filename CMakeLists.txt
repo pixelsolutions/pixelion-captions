@@ -37,7 +37,7 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
 	PIXELION_API_BASE_URL="${PIXELION_API_BASE_URL}"
 )
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src src/shared)
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE src/plugin-main.cpp src/shared/plugin-debug-log.cpp resources/pixelion.qrc)
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE src/plugin-main.cpp src/shared/plugin-debug-log.cpp src/shared/feedback-dialog.cpp resources/pixelion.qrc)
 
 if(WIN32)
 	target_sources(${CMAKE_PROJECT_NAME} PRIVATE
