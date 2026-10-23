@@ -1732,7 +1732,25 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	status->setObjectName(QStringLiteral("mutedText"));
 	status->setWordWrap(true);
 	statusLayout->addWidget(status, 1, Qt::AlignVCenter);
-	layout->addWidget(statusRow);
+	auto *statusContainer = new QWidget(content);
+	auto *statusContainerLayout = new QVBoxLayout(statusContainer);
+	statusContainerLayout->setContentsMargins(0, 0, 0, 0);
+	statusContainerLayout->setSpacing(4);
+	statusContainerLayout->addWidget(statusRow);
+	auto *upgradeButtonRow = new QWidget(statusContainer);
+	auto *upgradeButtonLayout = new QHBoxLayout(upgradeButtonRow);
+	upgradeButtonLayout->setContentsMargins(16, 0, 0, 0);
+	upgradeButtonLayout->setSpacing(0);
+	auto *upgradeButton = new QPushButton(QStringLiteral("Upgrade"), upgradeButtonRow);
+	upgradeButton->setFixedSize(92, 24);
+	upgradeButton->setVisible(false);
+	upgradeButtonLayout->addWidget(upgradeButton, 0, Qt::AlignLeft);
+	upgradeButtonLayout->addStretch(1);
+	statusContainerLayout->addWidget(upgradeButtonRow);
+	layout->addWidget(statusContainer);
+	QObject::connect(upgradeButton, &QPushButton::clicked, root, [] {
+		QDesktopServices::openUrl(QUrl(QStringLiteral("https://pixelion.ai/pricing")));
+	});
 	auto readiness = std::make_shared<std::function<void()>>();
 
 	auto *accountHeader = new QWidget(content);
@@ -2084,14 +2102,15 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 			*autoStarted = session->isRunning() || beginSession(true);
 		}
 	};
-	session->setCallbacks([statusPtr = QPointer<QLabel>(status), statusDotPtr = QPointer<QLabel>(statusDot), startPtr = QPointer<SpinnerButton>(start), activePtr = QPointer<ActiveSessionIndicator>(activeSessionIndicator), timerPtr = QPointer<SessionElapsedTimer>(sessionTimer), readiness, auth, libraryNetwork, limitActionState](bool running, const QString &message) {
+	session->setCallbacks([statusPtr = QPointer<QLabel>(status), statusDotPtr = QPointer<QLabel>(statusDot), upgradeButtonPtr = QPointer<QPushButton>(upgradeButton), startPtr = QPointer<SpinnerButton>(start), activePtr = QPointer<ActiveSessionIndicator>(activeSessionIndicator), timerPtr = QPointer<SessionElapsedTimer>(sessionTimer), readiness, auth, libraryNetwork, limitActionState](bool running, const QString &message) {
 		const QString normalized = message.toLower();
+		const bool requiresPro = normalized.contains(QStringLiteral("requires pixelion pro")) || normalized.contains(QStringLiteral("requires a pro plan"));
 		const bool hasError = normalized.contains(QStringLiteral("error")) || normalized.contains(QStringLiteral("failed")) ||
 			normalized.contains(QStringLiteral("connection was interrupted")) ||
 			normalized.contains(QStringLiteral("could not")) || normalized.contains(QStringLiteral("rejected")) ||
-			normalized.contains(QStringLiteral("requires pixelion pro")) ||
-			normalized.contains(QStringLiteral("requires a pro plan")) ||
+			requiresPro ||
 			normalized.contains(QStringLiteral("used up")) || normalized.contains(QStringLiteral("limit has been reached"));
+		if (upgradeButtonPtr) upgradeButtonPtr->setVisible(requiresPro);
 		if (hasError)
 			PixelionDebugLog::write("ERROR", QStringLiteral("Session: %1").arg(message));
 		else
