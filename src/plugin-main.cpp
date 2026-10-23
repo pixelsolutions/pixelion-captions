@@ -1757,7 +1757,7 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		query.addQueryItem(QStringLiteral("utm_medium"), QStringLiteral("limit_banner"));
 		query.addQueryItem(QStringLiteral("utm_campaign"), QStringLiteral("duration_limit"));
 		if (!auth->userId().isEmpty())
-			query.addQueryItem(QStringLiteral("userid"), auth->userId());
+			query.addQueryItem(QStringLiteral("user_id"), auth->userId());
 		checkoutUrl.setQuery(query);
 		QDesktopServices::openUrl(checkoutUrl);
 	});
