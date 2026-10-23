@@ -378,10 +378,41 @@ void saveAutoStartSetting(bool enabled)
 	if (directory) { os_mkdirs(directory); bfree(directory); }
 	char *path = obs_module_config_path("session-settings.json");
 	if (!path) return;
-	obs_data_t *settings = obs_data_create();
+	obs_data_t *settings = obs_data_create_from_json_file(path);
+	if (!settings) settings = obs_data_create();
 	obs_data_set_bool(settings, "auto_start", enabled);
 	if (!obs_data_save_json(settings, path))
 		blog(LOG_WARNING, "Pixelion Live Captions: could not save session settings");
+	obs_data_release(settings);
+	bfree(path);
+}
+
+void restoreLanguageSelections(QComboBox *source, QComboBox *target)
+{
+	char *path = obs_module_config_path("session-settings.json");
+	if (!path) return;
+	obs_data_t *settings = obs_data_create_from_json_file(path);
+	bfree(path);
+	if (!settings) return;
+	const int sourceIndex = source->findData(QString::fromUtf8(obs_data_get_string(settings, "source_language")));
+	const int targetIndex = target->findData(QString::fromUtf8(obs_data_get_string(settings, "target_language")));
+	if (sourceIndex >= 0) source->setCurrentIndex(sourceIndex);
+	if (targetIndex >= 0) target->setCurrentIndex(targetIndex);
+	obs_data_release(settings);
+}
+
+void saveLanguageSelections(QComboBox *source, QComboBox *target)
+{
+	char *directory = obs_module_config_path(nullptr);
+	if (directory) { os_mkdirs(directory); bfree(directory); }
+	char *path = obs_module_config_path("session-settings.json");
+	if (!path) return;
+	obs_data_t *settings = obs_data_create_from_json_file(path);
+	if (!settings) settings = obs_data_create();
+	obs_data_set_string(settings, "source_language", source->currentData().toString().toUtf8().constData());
+	obs_data_set_string(settings, "target_language", target->currentData().toString().toUtf8().constData());
+	if (!obs_data_save_json(settings, path))
+		blog(LOG_WARNING, "Pixelion Captions: could not save language selections");
 	obs_data_release(settings);
 	bfree(path);
 }
@@ -1923,7 +1954,7 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	QPointer<QLabel> accountLabel = accountMessage;
 	QPointer<QPushButton> signInButton = signIn;
 	QPointer<QPushButton> createAccountButton = createAccount;
-	auth->setStateCallback([accountLabel, signInButton, createAccountButton, readiness](const QString &email, const QString &plan, const QString &message) {
+	auth->setStateCallback([accountLabel, signInButton, createAccountButton, upgradeButtonPtr = QPointer<QPushButton>(upgradeButton), readiness](const QString &email, const QString &plan, const QString &message) {
 		const QString normalized = message.toLower();
 		if (normalized.contains(QStringLiteral("could not")) || normalized.contains(QStringLiteral("failed")) ||
 		    normalized.contains(QStringLiteral("error")) || normalized.contains(QStringLiteral("rejected")) ||
@@ -1937,6 +1968,9 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 										   .arg(email, planName).arg(maximumTranscriptionMinutesForPlan(planName)));
 		}
 		const bool signedIn = !email.isEmpty();
+		const QString normalizedPlan = plan.trimmed().toLower();
+		if (upgradeButtonPtr && (!signedIn || (!normalizedPlan.isEmpty() && normalizedPlan != QStringLiteral("free"))))
+			upgradeButtonPtr->setVisible(false);
 		if (signInButton) signInButton->setVisible(!signedIn);
 		if (createAccountButton) createAccountButton->setVisible(!signedIn);
 		if (readiness && *readiness) (*readiness)();
@@ -1988,6 +2022,10 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	const QStringList targetNames{QStringLiteral("Chinese"), QStringLiteral("Dutch"), QStringLiteral("English"), QStringLiteral("French"), QStringLiteral("German"), QStringLiteral("Hindi"), QStringLiteral("Italian"), QStringLiteral("Japanese"), QStringLiteral("Korean"), QStringLiteral("Polish"), QStringLiteral("Portuguese"), QStringLiteral("Russian"), QStringLiteral("Spanish")};
 	const QStringList targetCodes{QStringLiteral("zh"), QStringLiteral("nl"), QStringLiteral("en"), QStringLiteral("fr"), QStringLiteral("de"), QStringLiteral("hi"), QStringLiteral("it"), QStringLiteral("ja"), QStringLiteral("ko"), QStringLiteral("pl"), QStringLiteral("pt"), QStringLiteral("ru"), QStringLiteral("es")};
 	for (int i = 0; i < targetNames.size(); ++i) targetLanguage->addItem(targetNames.at(i), targetCodes.at(i));
+	restoreLanguageSelections(sourceLanguage, targetLanguage);
+	const auto saveLanguages = [sourceLanguage, targetLanguage] { saveLanguageSelections(sourceLanguage, targetLanguage); };
+	QObject::connect(sourceLanguage, qOverload<int>(&QComboBox::currentIndexChanged), root, saveLanguages);
+	QObject::connect(targetLanguage, qOverload<int>(&QComboBox::currentIndexChanged), root, saveLanguages);
 	auto *targetLabel = new QLabel(QStringLiteral("Translate to"), content);
 	layout->addWidget(targetLabel);
 	layout->addWidget(targetLanguage);
@@ -2121,7 +2159,10 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 			normalized.contains(QStringLiteral("could not")) || normalized.contains(QStringLiteral("rejected")) ||
 			requiresPro ||
 			normalized.contains(QStringLiteral("used up")) || normalized.contains(QStringLiteral("limit has been reached"));
-		if (upgradeButtonPtr) upgradeButtonPtr->setVisible(requiresPro);
+		const QString currentPlan = auth->plan().trimmed().toLower();
+		if (upgradeButtonPtr)
+			upgradeButtonPtr->setVisible(requiresPro && auth->isSignedIn() &&
+				(currentPlan.isEmpty() || currentPlan == QStringLiteral("free")));
 		if (hasError)
 			PixelionDebugLog::write("ERROR", QStringLiteral("Session: %1").arg(message));
 		else
