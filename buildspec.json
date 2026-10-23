@@ -33,10 +33,10 @@
     },
     "platformConfig": {
         "macos": {
-            "bundleId": "ai.pixelion.livecaptions"
+            "bundleId": "ai.pixelion.captions"
         }
     },
-    "name": "pixelion-live-captions",
+    "name": "pixelion-captions",
     "displayName": "Pixelion Captions",
     "version": "0.1.0",
     "author": "Pixelion",

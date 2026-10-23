@@ -147,7 +147,7 @@ PixelionLiveSession::PixelionLiveSession(PixelionAuthService *auth, QObject *par
 	: QObject(parent), auth_(auth), network_(new QNetworkAccessManager(this))
 {
 	usageTimer_ = new QTimer(this);
-	usageTimer_->setInterval(10000);
+	usageTimer_->setInterval(60000);
 	connect(usageTimer_, &QTimer::timeout, this, [this] { checkUsage(false); });
 	limitTestTimer_ = new QTimer(this);
 	limitTestTimer_->setInterval(1000);

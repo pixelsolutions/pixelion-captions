@@ -60,6 +60,7 @@
 #include <QStandardPaths>
 #include <QSpinBox>
 #include <QSignalBlocker>
+#include <QStringList>
 #include <QIcon>
 #include <QKeyEvent>
 #include <QTextLayout>
@@ -73,7 +74,7 @@
 #include <QWidget>
 
 OBS_DECLARE_MODULE()
-OBS_MODULE_USE_DEFAULT_LOCALE("pixelion-live-captions", "en-US")
+OBS_MODULE_USE_DEFAULT_LOCALE("pixelion-captions", "en-US")
 
 namespace {
 constexpr auto kDockId = "pixelion-live-captions-control";
@@ -344,6 +345,29 @@ bool loadAutoStartSetting()
 	const bool enabled = obs_data_get_bool(settings, "auto_start");
 	obs_data_release(settings);
 	return enabled;
+}
+
+void migrateLegacyPluginSettings()
+{
+	char *configPath = obs_module_config_path(nullptr);
+	if (!configPath) return;
+	const QString currentDirectory = QString::fromUtf8(configPath);
+	bfree(configPath);
+
+	const QString configRoot = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+	const QString legacyDirectory = QDir(configRoot).filePath(QStringLiteral("obs-studio/plugin_config/pixelion-live-captions"));
+	if (QDir::cleanPath(currentDirectory) == QDir::cleanPath(legacyDirectory) || !QDir(legacyDirectory).exists()) return;
+	if (!QDir().mkpath(currentDirectory)) return;
+
+	const QStringList settingsFiles{QStringLiteral("session-settings.json"), QStringLiteral("transcript-settings.json"),
+					QStringLiteral("caption-style.json"), QStringLiteral("pixelion-live-captions.log"),
+					QStringLiteral("pixelion-live-captions.log.1")};
+	for (const QString &fileName : settingsFiles) {
+		const QString source = QDir(legacyDirectory).filePath(fileName);
+		const QString destination = QDir(currentDirectory).filePath(fileName);
+		if (!QFile::exists(destination) && QFile::exists(source) && !QFile::copy(source, destination))
+			blog(LOG_WARNING, "Pixelion Captions: could not migrate %s", fileName.toUtf8().constData());
+	}
 }
 
 void saveAutoStartSetting(bool enabled)
@@ -2281,6 +2305,7 @@ void onFrontendEvent(enum obs_frontend_event event, void *)
 bool obs_module_load(void)
 {
 	PixelionPlatform::registerBundledQtTlsBackend();
+	migrateLegacyPluginSettings();
 	PixelionDebugLog::write("INFO", QStringLiteral("Plugin loading; debug log: %1").arg(PixelionDebugLog::filePath()));
 	blog(LOG_INFO, "Pixelion Live Captions: debug log at %s", PixelionDebugLog::filePath().toUtf8().constData());
 	loadStyle();
