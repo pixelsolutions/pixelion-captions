@@ -93,6 +93,10 @@ set(PIXELION_QSCHANNEL_BACKEND
     "${PIXELION_QT_ROOT}/plugins/tls/qschannelbackend.dll"
 )
 if(WIN32 AND EXISTS "${PIXELION_QSCHANNEL_BACKEND}")
+    install(
+        FILES "${PIXELION_QSCHANNEL_BACKEND}"
+        DESTINATION "${CMAKE_PROJECT_NAME}/bin/64bit/tls"
+    )
     add_custom_command(
         TARGET ${CMAKE_PROJECT_NAME}
         POST_BUILD
@@ -106,6 +110,7 @@ if(WIN32 AND EXISTS "${PIXELION_QSCHANNEL_BACKEND}")
         VERBATIM
     )
 endif()
+install(FILES LICENSE README.md DESTINATION "${CMAKE_PROJECT_NAME}")
 set_target_properties_plugin(
     ${CMAKE_PROJECT_NAME}
     PROPERTIES OUTPUT_NAME ${_name}
