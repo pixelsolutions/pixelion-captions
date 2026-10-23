@@ -4,6 +4,8 @@ Pixelion Captions adds live transcription and translation to OBS Studio. It uses
 
 You can save transcripts on your computer, browse previous sessions, and optionally save transcripts to your Pixelion Library.
 
+Pixelion Captions is a third-party plugin developed by Pixel Solutions. It is not part of OBS Studio and is not affiliated with or endorsed by the OBS Project.
+
 ## Requirements
 
 You need Windows x64, OBS Studio, a free Pixelion.ai account, and an internet connection. Translation requires a Pixelion Pro plan. Available minutes and session limits depend on your subscription.
@@ -43,6 +45,10 @@ You can also enable Start/stop with streaming or recording. Automatic start stil
 Audio is sent to Pixelion for processing after you give consent and start a session. Live transcription and translation require an internet connection. Local transcript saving and Pixelion Library saving are separate settings.
 
 Read the [privacy policy](https://pixelion.ai/privacy) for more information.
+
+## Use of AI tools
+
+AI coding assistants were used for parts of this project, mainly to speed up routine work such as drafting boilerplate, reformatting, and suggesting fixes. The plugin was not written entirely or in large part by AI. Its design, the core transcription, translation, audio, and session logic, and the integration with Pixelion's services were directed and reviewed by human developers at Pixel Solutions, who are responsible for the released code. The plugin was also tested by multiple hands in OBS Studio before release.
 
 ## License
 
