@@ -106,4 +106,7 @@ if(WIN32 AND EXISTS "${PIXELION_QSCHANNEL_BACKEND}")
         VERBATIM
     )
 endif()
-set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
+set_target_properties_plugin(
+    ${CMAKE_PROJECT_NAME}
+    PROPERTIES OUTPUT_NAME ${_name}
+)
