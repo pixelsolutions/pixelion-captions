@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="/pixelion">
+    <file alias="logo.png">pixelion-logo.png</file>
+  </qresource>
+</RCC>
