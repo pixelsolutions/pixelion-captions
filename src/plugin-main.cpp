@@ -2089,6 +2089,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		const bool hasError = normalized.contains(QStringLiteral("error")) || normalized.contains(QStringLiteral("failed")) ||
 			normalized.contains(QStringLiteral("connection was interrupted")) ||
 			normalized.contains(QStringLiteral("could not")) || normalized.contains(QStringLiteral("rejected")) ||
+			normalized.contains(QStringLiteral("requires pixelion pro")) ||
+			normalized.contains(QStringLiteral("requires a pro plan")) ||
 			normalized.contains(QStringLiteral("used up")) || normalized.contains(QStringLiteral("limit has been reached"));
 		if (hasError)
 			PixelionDebugLog::write("ERROR", QStringLiteral("Session: %1").arg(message));

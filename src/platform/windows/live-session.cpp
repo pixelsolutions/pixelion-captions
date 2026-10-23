@@ -231,7 +231,9 @@ void PixelionLiveSession::requestRealtimeToken(const QString &mode, const QStrin
 								.arg(status).arg(networkError.isEmpty() ? QString() : QStringLiteral(", %1").arg(networkError), error));
 				QString message = error;
 				if (status == 0 && !networkError.isEmpty()) message = QStringLiteral("Could not reach Pixelion. Live transcription and translation need an internet connection. Check your connection, then try Start again.");
-				else if (message == QStringLiteral("PRO_REQUIRED")) message = QStringLiteral("Live translation requires Pixelion Pro.");
+				else if (message == QStringLiteral("PRO_REQUIRED") ||
+					 message.compare(QStringLiteral("Translation requires a Pro plan"), Qt::CaseInsensitive) == 0)
+					message = QStringLiteral("Live translation requires Pixelion Pro.");
 				else if (message == QStringLiteral("MINUTES_LIMIT") || message == QStringLiteral("TRIAL_LIMIT")) message = QStringLiteral("Your Pixelion minutes are used up for this period.");
 				else if (message == QStringLiteral("DURATION_LIMIT")) message = QStringLiteral("This session exceeds your plan's session limit.");
 				else if (message.isEmpty()) message = QStringLiteral("Pixelion could not start this session. Check your connection and account.");
