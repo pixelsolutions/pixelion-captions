@@ -234,6 +234,7 @@ bool PixelionAuthService::isSignedIn() const
 }
 
 QString PixelionAuthService::email() const { return email_; }
+QString PixelionAuthService::userId() const { return userId_; }
 QString PixelionAuthService::plan() const { return plan_; }
 
 void PixelionAuthService::publish(const QString &message)
@@ -517,6 +518,11 @@ void PixelionAuthService::loadProfile()
 			email_ = profile.value(QStringLiteral("email")).toString();
 			if (email_.isEmpty())
 				email_ = idTokenClaim(idToken_, QStringLiteral("email"));
+			userId_ = profile.value(QStringLiteral("id")).toString();
+			if (userId_.isEmpty())
+				userId_ = profile.value(QStringLiteral("user_id")).toString();
+			if (userId_.isEmpty())
+				userId_ = idTokenClaim(idToken_, QStringLiteral("sub"));
 			plan_ = profile.value(QStringLiteral("plan")).toString(QStringLiteral("free"));
 			if (email_.isEmpty()) {
 				publish(QStringLiteral("Signed in, but the Pixelion account email was unavailable."));
@@ -535,6 +541,7 @@ void PixelionAuthService::signOut()
 	accessToken_.clear();
 	idToken_.clear();
 	email_.clear();
+	userId_.clear();
 	plan_.clear();
 	accessTokenExpiresAt_ = 0;
 	publishUsage(UsageInfo{});

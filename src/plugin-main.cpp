@@ -68,6 +68,7 @@
 #include <QTableWidget>
 #include <QHeaderView>
 #include <QToolButton>
+#include <QUrlQuery>
 #include <QTimer>
 #include <QVector>
 #include <QVBoxLayout>
@@ -1748,8 +1749,17 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	upgradeButtonLayout->addStretch(1);
 	statusContainerLayout->addWidget(upgradeButtonRow);
 	layout->addWidget(statusContainer);
-	QObject::connect(upgradeButton, &QPushButton::clicked, root, [] {
-		QDesktopServices::openUrl(QUrl(QStringLiteral("https://pixelion.ai/pricing")));
+	QObject::connect(upgradeButton, &QPushButton::clicked, root, [auth] {
+		QUrl checkoutUrl(QStringLiteral("https://pixelion.ai/checkout"));
+		QUrlQuery query;
+		query.addQueryItem(QStringLiteral("plan"), QStringLiteral("pro"));
+		query.addQueryItem(QStringLiteral("utm_source"), QStringLiteral("obs_plugin"));
+		query.addQueryItem(QStringLiteral("utm_medium"), QStringLiteral("limit_banner"));
+		query.addQueryItem(QStringLiteral("utm_campaign"), QStringLiteral("duration_limit"));
+		if (!auth->userId().isEmpty())
+			query.addQueryItem(QStringLiteral("userid"), auth->userId());
+		checkoutUrl.setQuery(query);
+		QDesktopServices::openUrl(checkoutUrl);
 	});
 	auto readiness = std::make_shared<std::function<void()>>();
 

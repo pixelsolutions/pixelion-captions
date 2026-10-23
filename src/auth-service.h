@@ -40,6 +40,7 @@ public:
 	void withAccessToken(AccessTokenCallback callback);
 	bool isSignedIn() const;
 	QString email() const;
+	QString userId() const;
 	QString plan() const;
 
 private:
@@ -63,6 +64,7 @@ private:
 	QString accessToken_;
 	QString idToken_;
 	QString email_;
+	QString userId_;
 	QString plan_;
 	qint64 accessTokenExpiresAt_ = 0;
 	QString pendingState_;
