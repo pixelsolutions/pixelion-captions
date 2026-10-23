@@ -44,12 +44,16 @@ void showFeedbackDialog(QWidget *parent)
 	typeLabel->setBuddy(type);
 	type->setAccessibleName(QStringLiteral("Feedback type (required)"));
 	type->addItem(QStringLiteral("Select an option…"), QString());
-	const QStringList categories{QStringLiteral("Bug Report"), QStringLiteral("Feature Request"),
-		QStringLiteral("Transcription Quality"), QStringLiteral("UI / Usability"),
-		QStringLiteral("Give Compliment"), QStringLiteral("Other")};
-	const QStringList ids{QStringLiteral("bug"), QStringLiteral("feature"), QStringLiteral("quality"),
-		QStringLiteral("ui"), QStringLiteral("compliment"), QStringLiteral("other")};
-	for (int i = 0; i < categories.size(); ++i) type->addItem(categories[i], ids[i]);
+	const QStringList categories{QStringLiteral("Bug Report"),
+				     QStringLiteral("Feature Request"),
+				     QStringLiteral("Transcription Quality"),
+				     QStringLiteral("UI / Usability"),
+				     QStringLiteral("Give Compliment"),
+				     QStringLiteral("Other")};
+	const QStringList ids{QStringLiteral("bug"), QStringLiteral("feature"),    QStringLiteral("quality"),
+			      QStringLiteral("ui"),  QStringLiteral("compliment"), QStringLiteral("other")};
+	for (int i = 0; i < categories.size(); ++i)
+		type->addItem(categories[i], ids[i]);
 	layout->addWidget(type);
 	auto *messageLabel = new QLabel(QStringLiteral("Enter your message below. *"), &dialog);
 	layout->addWidget(messageLabel);
@@ -59,13 +63,16 @@ void showFeedbackDialog(QWidget *parent)
 	message->setAccessibleName(QStringLiteral("Feedback message (required)"));
 	messageLabel->setBuddy(message);
 	layout->addWidget(message, 1);
-	auto *ratingLabel = new QLabel(QStringLiteral("Overall, how satisfied are you with your experience using Pixelion Captions?"), &dialog);
+	auto *ratingLabel = new QLabel(
+		QStringLiteral("Overall, how satisfied are you with your experience using Pixelion Captions?"),
+		&dialog);
 	ratingLabel->setWordWrap(true);
 	layout->addWidget(ratingLabel);
 	auto *ratings = new QButtonGroup(&dialog);
 	auto *ratingRow = new QHBoxLayout;
 	const QStringList levels{QStringLiteral("Very dissatisfied"), QStringLiteral("Dissatisfied"),
-		QStringLiteral("Neutral"), QStringLiteral("Satisfied"), QStringLiteral("Very satisfied")};
+				 QStringLiteral("Neutral"), QStringLiteral("Satisfied"),
+				 QStringLiteral("Very satisfied")};
 	for (int i = 0; i < levels.size(); ++i) {
 		auto *column = new QVBoxLayout;
 		auto *radio = new QRadioButton(&dialog);
@@ -109,11 +116,13 @@ void showFeedbackDialog(QWidget *parent)
 	QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 	const auto emailValid = [email] {
 		return email->text().trimmed().isEmpty() ||
-			QRegularExpression(QStringLiteral("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")).match(email->text().trimmed()).hasMatch();
+		       QRegularExpression(QStringLiteral("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
+			       .match(email->text().trimmed())
+			       .hasMatch();
 	};
 	const auto validate = [=] {
 		send->setEnabled(type->currentIndex() > 0 && !message->toPlainText().trimmed().isEmpty() &&
-			 ratings->checkedId() > 0 && emailValid());
+				 ratings->checkedId() > 0 && emailValid());
 	};
 	QObject::connect(type, &QComboBox::currentIndexChanged, &dialog, validate);
 	QObject::connect(message, &QTextEdit::textChanged, &dialog, validate);
@@ -122,19 +131,28 @@ void showFeedbackDialog(QWidget *parent)
 	auto *network = new QNetworkAccessManager(&dialog);
 	QObject::connect(send, &QPushButton::clicked, &dialog, [=, &dialog] {
 		const int rating = ratings->checkedId();
-		if (type->currentIndex() <= 0 || message->toPlainText().trimmed().isEmpty() || rating <= 0 || !emailValid()) return;
-		QString reason = QStringLiteral("[%1] %2 | satisfaction: %3/5 (%4) | platform: obs_plugin | version: %5")
-			.arg(type->currentData().toString(), message->toPlainText().trimmed())
-			.arg(rating).arg(levels[rating - 1], QString::fromUtf8(PLUGIN_VERSION));
-		if (!email->text().trimmed().isEmpty()) reason += QStringLiteral(" | email: ") + email->text().trimmed();
-		QNetworkRequest request(QUrl(QStringLiteral("https://izxjmtbo5b.execute-api.us-east-1.amazonaws.com/prod/report-ai")));
+		if (type->currentIndex() <= 0 || message->toPlainText().trimmed().isEmpty() || rating <= 0 ||
+		    !emailValid())
+			return;
+		QString reason =
+			QStringLiteral("[%1] %2 | satisfaction: %3/5 (%4) | platform: obs_plugin | version: %5")
+				.arg(type->currentData().toString(), message->toPlainText().trimmed())
+				.arg(rating)
+				.arg(levels[rating - 1], QString::fromUtf8(PLUGIN_VERSION));
+		if (!email->text().trimmed().isEmpty())
+			reason += QStringLiteral(" | email: ") + email->text().trimmed();
+		QNetworkRequest request(
+			QUrl(QStringLiteral("https://izxjmtbo5b.execute-api.us-east-1.amazonaws.com/prod/report-ai")));
 		request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
 		request.setTransferTimeout(30000);
 		const QJsonObject body{{QStringLiteral("content_type"), QStringLiteral("feedback")},
-			{QStringLiteral("reason"), reason}, {QStringLiteral("content_snippet"), QString()},
-			{QStringLiteral("job_id"), QJsonValue(QJsonValue::Null)}};
-		for (QWidget *field : QList<QWidget *>{type, message, email, details}) field->setEnabled(false);
-		for (auto *radio : ratings->buttons()) radio->setEnabled(false);
+				       {QStringLiteral("reason"), reason},
+				       {QStringLiteral("content_snippet"), QString()},
+				       {QStringLiteral("job_id"), QJsonValue(QJsonValue::Null)}};
+		for (QWidget *field : QList<QWidget *>{type, message, email, details})
+			field->setEnabled(false);
+		for (auto *radio : ratings->buttons())
+			radio->setEnabled(false);
 		send->setEnabled(false);
 		send->setText(QStringLiteral("Sending…"));
 		status->hide();
@@ -143,15 +161,18 @@ void showFeedbackDialog(QWidget *parent)
 			const int code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 			const bool ok = reply->error() == QNetworkReply::NoError && code >= 200 && code < 300;
 			reply->deleteLater();
-			status->setText(ok ? QStringLiteral("Thank you! Your feedback helps us improve Pixelion Captions.")
-				: QStringLiteral("Could not send feedback. Check your connection and try again."));
+			status->setText(
+				ok ? QStringLiteral("Thank you! Your feedback helps us improve Pixelion Captions.")
+				   : QStringLiteral("Could not send feedback. Check your connection and try again."));
 			status->show();
 			if (ok) {
 				send->hide();
 				buttons->button(QDialogButtonBox::Cancel)->setText(QStringLiteral("Done"));
 			} else {
-				for (QWidget *field : QList<QWidget *>{type, message, email, details}) field->setEnabled(true);
-				for (auto *radio : ratings->buttons()) radio->setEnabled(true);
+				for (QWidget *field : QList<QWidget *>{type, message, email, details})
+					field->setEnabled(true);
+				for (auto *radio : ratings->buttons())
+					radio->setEnabled(true);
 				send->setText(QStringLiteral("Send Feedback"));
 				validate();
 			}

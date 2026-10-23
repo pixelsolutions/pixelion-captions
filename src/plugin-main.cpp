@@ -135,15 +135,9 @@ class CollapsibleComboBox final : public QComboBox {
 public:
 	explicit CollapsibleComboBox(QWidget *parent) : QComboBox(parent) {}
 
-	void setExpandedCallback(std::function<void(bool)> callback)
-	{
-		expandedCallback = std::move(callback);
-	}
+	void setExpandedCallback(std::function<void(bool)> callback) { expandedCallback = std::move(callback); }
 
-	void showPopup() override
-	{
-		setExpanded(!expanded);
-	}
+	void showPopup() override { setExpanded(!expanded); }
 
 	void hidePopup() override
 	{
@@ -191,13 +185,16 @@ public:
 	void setSessionRunning(bool running)
 	{
 		running_ = running;
-		if (!connecting_) setText(running_ ? QStringLiteral("Stop") : idleLabel_);
-		setAccessibleName(running_ ? QStringLiteral("Stop live captions") : QStringLiteral("Start live captions"));
+		if (!connecting_)
+			setText(running_ ? QStringLiteral("Stop") : idleLabel_);
+		setAccessibleName(running_ ? QStringLiteral("Stop live captions")
+					   : QStringLiteral("Start live captions"));
 	}
 
 	void setConnecting(bool connecting)
 	{
-		if (connecting_ == connecting) return;
+		if (connecting_ == connecting)
+			return;
 		connecting_ = connecting;
 		if (connecting_) {
 			setText(QString());
@@ -215,14 +212,16 @@ public:
 	void setIdleLabel(const QString &label)
 	{
 		idleLabel_ = label;
-		if (!running_ && !connecting_) setText(idleLabel_);
+		if (!running_ && !connecting_)
+			setText(idleLabel_);
 	}
 
 protected:
 	void paintEvent(QPaintEvent *event) override
 	{
 		QPushButton::paintEvent(event);
-		if (!connecting_) return;
+		if (!connecting_)
+			return;
 		QPainter painter(this);
 		painter.setRenderHint(QPainter::Antialiasing);
 		painter.translate(width() / 2.0, height() / 2.0);
@@ -261,12 +260,15 @@ public:
 
 	void setActive(bool active)
 	{
-		if (active == active_) return;
+		if (active == active_)
+			return;
 		active_ = active;
 		bright_ = true;
 		setVisible(active_);
-		if (active_) timer_.start();
-		else timer_.stop();
+		if (active_)
+			timer_.start();
+		else
+			timer_.stop();
 		update();
 	}
 
@@ -276,7 +278,8 @@ protected:
 		QPainter painter(this);
 		painter.setRenderHint(QPainter::Antialiasing);
 		painter.setPen(Qt::NoPen);
-		painter.setBrush(active_ && bright_ ? QColor(QStringLiteral("#35c98a")) : QColor(QStringLiteral("#1c6b4c")));
+		painter.setBrush(active_ && bright_ ? QColor(QStringLiteral("#35c98a"))
+						    : QColor(QStringLiteral("#1c6b4c")));
 		painter.drawRoundedRect(rect().adjusted(1, 1, -1, -1), 1.5, 1.5);
 	}
 
@@ -301,7 +304,8 @@ public:
 
 	void setRunning(bool running)
 	{
-		if (running == running_) return;
+		if (running == running_)
+			return;
 		running_ = running;
 		if (running_) {
 			elapsed_.start();
@@ -322,8 +326,10 @@ private:
 		const qint64 hours = totalSeconds / 3600;
 		const qint64 minutes = (totalSeconds / 60) % 60;
 		const qint64 seconds = totalSeconds % 60;
-		setText(QStringLiteral("%1:%2:%3").arg(hours, 2, 10, QLatin1Char('0'))
-				.arg(minutes, 2, 10, QLatin1Char('0')).arg(seconds, 2, 10, QLatin1Char('0')));
+		setText(QStringLiteral("%1:%2:%3")
+				.arg(hours, 2, 10, QLatin1Char('0'))
+				.arg(minutes, 2, 10, QLatin1Char('0'))
+				.arg(seconds, 2, 10, QLatin1Char('0')));
 	}
 
 	QElapsedTimer elapsed_;
@@ -340,10 +346,12 @@ int maximumTranscriptionMinutesForPlan(const QString &plan)
 bool loadAutoStartSetting()
 {
 	char *path = obs_module_config_path("session-settings.json");
-	if (!path) return false;
+	if (!path)
+		return false;
 	obs_data_t *settings = obs_data_create_from_json_file(path);
 	bfree(path);
-	if (!settings) return false;
+	if (!settings)
+		return false;
 	const bool enabled = obs_data_get_bool(settings, "auto_start");
 	obs_data_release(settings);
 	return enabled;
@@ -352,17 +360,23 @@ bool loadAutoStartSetting()
 void migrateLegacyPluginSettings()
 {
 	char *configPath = obs_module_config_path(nullptr);
-	if (!configPath) return;
+	if (!configPath)
+		return;
 	const QString currentDirectory = QString::fromUtf8(configPath);
 	bfree(configPath);
 
 	const QString configRoot = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
-	const QString legacyDirectory = QDir(configRoot).filePath(QStringLiteral("obs-studio/plugin_config/pixelion-live-captions"));
-	if (QDir::cleanPath(currentDirectory) == QDir::cleanPath(legacyDirectory) || !QDir(legacyDirectory).exists()) return;
-	if (!QDir().mkpath(currentDirectory)) return;
+	const QString legacyDirectory =
+		QDir(configRoot).filePath(QStringLiteral("obs-studio/plugin_config/pixelion-live-captions"));
+	if (QDir::cleanPath(currentDirectory) == QDir::cleanPath(legacyDirectory) || !QDir(legacyDirectory).exists())
+		return;
+	if (!QDir().mkpath(currentDirectory))
+		return;
 
-	const QStringList settingsFiles{QStringLiteral("session-settings.json"), QStringLiteral("transcript-settings.json"),
-					QStringLiteral("caption-style.json"), QStringLiteral("pixelion-live-captions.log"),
+	const QStringList settingsFiles{QStringLiteral("session-settings.json"),
+					QStringLiteral("transcript-settings.json"),
+					QStringLiteral("caption-style.json"),
+					QStringLiteral("pixelion-live-captions.log"),
 					QStringLiteral("pixelion-live-captions.log.1")};
 	for (const QString &fileName : settingsFiles) {
 		const QString source = QDir(legacyDirectory).filePath(fileName);
@@ -375,11 +389,16 @@ void migrateLegacyPluginSettings()
 void saveAutoStartSetting(bool enabled)
 {
 	char *directory = obs_module_config_path(nullptr);
-	if (directory) { os_mkdirs(directory); bfree(directory); }
+	if (directory) {
+		os_mkdirs(directory);
+		bfree(directory);
+	}
 	char *path = obs_module_config_path("session-settings.json");
-	if (!path) return;
+	if (!path)
+		return;
 	obs_data_t *settings = obs_data_create_from_json_file(path);
-	if (!settings) settings = obs_data_create();
+	if (!settings)
+		settings = obs_data_create();
 	obs_data_set_bool(settings, "auto_start", enabled);
 	if (!obs_data_save_json(settings, path))
 		blog(LOG_WARNING, "Pixelion Live Captions: could not save session settings");
@@ -390,25 +409,34 @@ void saveAutoStartSetting(bool enabled)
 void restoreLanguageSelections(QComboBox *source, QComboBox *target)
 {
 	char *path = obs_module_config_path("session-settings.json");
-	if (!path) return;
+	if (!path)
+		return;
 	obs_data_t *settings = obs_data_create_from_json_file(path);
 	bfree(path);
-	if (!settings) return;
+	if (!settings)
+		return;
 	const int sourceIndex = source->findData(QString::fromUtf8(obs_data_get_string(settings, "source_language")));
 	const int targetIndex = target->findData(QString::fromUtf8(obs_data_get_string(settings, "target_language")));
-	if (sourceIndex >= 0) source->setCurrentIndex(sourceIndex);
-	if (targetIndex >= 0) target->setCurrentIndex(targetIndex);
+	if (sourceIndex >= 0)
+		source->setCurrentIndex(sourceIndex);
+	if (targetIndex >= 0)
+		target->setCurrentIndex(targetIndex);
 	obs_data_release(settings);
 }
 
 void saveLanguageSelections(QComboBox *source, QComboBox *target)
 {
 	char *directory = obs_module_config_path(nullptr);
-	if (directory) { os_mkdirs(directory); bfree(directory); }
+	if (directory) {
+		os_mkdirs(directory);
+		bfree(directory);
+	}
 	char *path = obs_module_config_path("session-settings.json");
-	if (!path) return;
+	if (!path)
+		return;
 	obs_data_t *settings = obs_data_create_from_json_file(path);
-	if (!settings) settings = obs_data_create();
+	if (!settings)
+		settings = obs_data_create();
 	obs_data_set_string(settings, "source_language", source->currentData().toString().toUtf8().constData());
 	obs_data_set_string(settings, "target_language", target->currentData().toString().toUtf8().constData());
 	if (!obs_data_save_json(settings, path))
@@ -419,19 +447,24 @@ void saveLanguageSelections(QComboBox *source, QComboBox *target)
 
 void loadTranscriptSettings()
 {
-	transcriptDirectory = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(QStringLiteral("Pixelion Live Captions"));
+	transcriptDirectory = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
+				      .filePath(QStringLiteral("Pixelion Live Captions"));
 	char *path = obs_module_config_path("transcript-settings.json");
-	if (!path) return;
+	if (!path)
+		return;
 	obs_data_t *settings = obs_data_create_from_json_file(path);
 	bfree(path);
-	if (!settings) return;
-	saveTranscriptLocally = !obs_data_has_user_value(settings, "save_locally") || obs_data_get_bool(settings, "save_locally");
+	if (!settings)
+		return;
+	saveTranscriptLocally = !obs_data_has_user_value(settings, "save_locally") ||
+				obs_data_get_bool(settings, "save_locally");
 	autoSaveTranscriptToPixelion = obs_data_get_bool(settings, "save_to_pixelion");
 	transcriptDirectory = QString::fromUtf8(obs_data_get_string(settings, "directory")).trimmed();
 	transcriptFilenamePattern = QString::fromUtf8(obs_data_get_string(settings, "filename_pattern")).trimmed();
 	obs_data_release(settings);
 	if (transcriptDirectory.isEmpty())
-		transcriptDirectory = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(QStringLiteral("Pixelion Live Captions"));
+		transcriptDirectory = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
+					      .filePath(QStringLiteral("Pixelion Live Captions"));
 	if (transcriptFilenamePattern.isEmpty())
 		transcriptFilenamePattern = QStringLiteral("Pixelion Live Captions {date} {time}");
 }
@@ -439,9 +472,13 @@ void loadTranscriptSettings()
 void saveTranscriptSettings()
 {
 	char *directory = obs_module_config_path(nullptr);
-	if (directory) { os_mkdirs(directory); bfree(directory); }
+	if (directory) {
+		os_mkdirs(directory);
+		bfree(directory);
+	}
 	char *path = obs_module_config_path("transcript-settings.json");
-	if (!path) return;
+	if (!path)
+		return;
 	obs_data_t *settings = obs_data_create();
 	obs_data_set_bool(settings, "save_locally", saveTranscriptLocally);
 	obs_data_set_bool(settings, "save_to_pixelion", autoSaveTranscriptToPixelion);
@@ -458,7 +495,8 @@ QString transcriptSnapshot()
 	QMutexLocker lock(&styleMutex);
 	QString text = transcriptCommittedText;
 	if (!transcriptDraftText.isEmpty()) {
-		if (!text.isEmpty()) text += QLatin1Char('\n');
+		if (!text.isEmpty())
+			text += QLatin1Char('\n');
 		text += transcriptDraftText;
 	}
 	return text;
@@ -472,26 +510,37 @@ QString formatCaptionTimestamp(qint64 milliseconds, QChar separator)
 	const qint64 seconds = (value / 1000) % 60;
 	const qint64 millis = value % 1000;
 	return QStringLiteral("%1:%2:%3%4%5")
-		.arg(hours, 2, 10, QLatin1Char('0')).arg(minutes, 2, 10, QLatin1Char('0'))
-		.arg(seconds, 2, 10, QLatin1Char('0')).arg(separator).arg(millis, 3, 10, QLatin1Char('0'));
+		.arg(hours, 2, 10, QLatin1Char('0'))
+		.arg(minutes, 2, 10, QLatin1Char('0'))
+		.arg(seconds, 2, 10, QLatin1Char('0'))
+		.arg(separator)
+		.arg(millis, 3, 10, QLatin1Char('0'));
 }
 
 QString formatSessionDuration(const QJsonObject &metadata)
 {
 	qint64 durationMs = static_cast<qint64>(metadata.value(QStringLiteral("duration_ms")).toDouble(-1));
 	if (durationMs < 0) {
-		const QDateTime started = QDateTime::fromString(metadata.value(QStringLiteral("started_at")).toString(), Qt::ISODateWithMs);
-		const QDateTime ended = QDateTime::fromString(metadata.value(QStringLiteral("ended_at")).toString(), Qt::ISODateWithMs);
-		if (started.isValid() && ended.isValid()) durationMs = started.msecsTo(ended);
+		const QDateTime started = QDateTime::fromString(metadata.value(QStringLiteral("started_at")).toString(),
+								Qt::ISODateWithMs);
+		const QDateTime ended =
+			QDateTime::fromString(metadata.value(QStringLiteral("ended_at")).toString(), Qt::ISODateWithMs);
+		if (started.isValid() && ended.isValid())
+			durationMs = started.msecsTo(ended);
 	}
-	if (durationMs < 0) return QStringLiteral("—");
+	if (durationMs < 0)
+		return QStringLiteral("—");
 	const qint64 seconds = durationMs / 1000;
 	const qint64 hours = seconds / 3600;
 	const qint64 minutes = (seconds / 60) % 60;
 	const qint64 remainder = seconds % 60;
-	return hours > 0
-		? QStringLiteral("%1:%2:%3").arg(hours, 2, 10, QLatin1Char('0')).arg(minutes, 2, 10, QLatin1Char('0')).arg(remainder, 2, 10, QLatin1Char('0'))
-		: QStringLiteral("%1:%2").arg(seconds / 60, 2, 10, QLatin1Char('0')).arg(remainder, 2, 10, QLatin1Char('0'));
+	return hours > 0 ? QStringLiteral("%1:%2:%3")
+				   .arg(hours, 2, 10, QLatin1Char('0'))
+				   .arg(minutes, 2, 10, QLatin1Char('0'))
+				   .arg(remainder, 2, 10, QLatin1Char('0'))
+			 : QStringLiteral("%1:%2")
+				   .arg(seconds / 60, 2, 10, QLatin1Char('0'))
+				   .arg(remainder, 2, 10, QLatin1Char('0'));
 }
 
 void commitPendingCue(qint64 endMs)
@@ -517,22 +566,25 @@ QJsonObject transcriptMetadataObject(bool completed)
 	if (pendingCueStartMs >= 0 && !pendingCueText.trimmed().isEmpty()) {
 		const qint64 endMs = std::max(pendingCueStartMs, lastCaptionDeltaMs);
 		cues.append(QJsonObject{{QStringLiteral("start_ms"), static_cast<double>(pendingCueStartMs)},
-				       {QStringLiteral("end_ms"), static_cast<double>(endMs)},
-				       {QStringLiteral("text"), pendingCueText.trimmed()}});
+					{QStringLiteral("end_ms"), static_cast<double>(endMs)},
+					{QStringLiteral("text"), pendingCueText.trimmed()}});
 	}
-	QJsonObject metadata{{QStringLiteral("version"), 1},
-			      {QStringLiteral("session_id"), transcriptSessionId},
-			      {QStringLiteral("job_id"), transcriptJobId},
-			      {QStringLiteral("title"), transcriptSessionTitle},
-			      {QStringLiteral("library_state"), transcriptLibraryState},
-			      {QStringLiteral("library_url"), transcriptLibraryUrl},
-			      {QStringLiteral("started_at"), QDateTime::fromMSecsSinceEpoch(transcriptSessionStartedAt).toString(Qt::ISODateWithMs)},
-			      {QStringLiteral("mode"), transcriptMode},
-			      {QStringLiteral("source_language"), transcriptSourceLanguage},
-			      {QStringLiteral("target_language"), transcriptTargetLanguage},
-			      {QStringLiteral("duration_ms"), static_cast<double>(transcriptSessionClock.isValid() ? transcriptSessionClock.elapsed() : 0)},
-			      {QStringLiteral("status"), completed ? QStringLiteral("completed") : QStringLiteral("recoverable")},
-			      {QStringLiteral("cues"), cues}};
+	QJsonObject metadata{
+		{QStringLiteral("version"), 1},
+		{QStringLiteral("session_id"), transcriptSessionId},
+		{QStringLiteral("job_id"), transcriptJobId},
+		{QStringLiteral("title"), transcriptSessionTitle},
+		{QStringLiteral("library_state"), transcriptLibraryState},
+		{QStringLiteral("library_url"), transcriptLibraryUrl},
+		{QStringLiteral("started_at"),
+		 QDateTime::fromMSecsSinceEpoch(transcriptSessionStartedAt).toString(Qt::ISODateWithMs)},
+		{QStringLiteral("mode"), transcriptMode},
+		{QStringLiteral("source_language"), transcriptSourceLanguage},
+		{QStringLiteral("target_language"), transcriptTargetLanguage},
+		{QStringLiteral("duration_ms"),
+		 static_cast<double>(transcriptSessionClock.isValid() ? transcriptSessionClock.elapsed() : 0)},
+		{QStringLiteral("status"), completed ? QStringLiteral("completed") : QStringLiteral("recoverable")},
+		{QStringLiteral("cues"), cues}};
 	if (completed)
 		metadata.insert(QStringLiteral("ended_at"), QDateTime::currentDateTime().toString(Qt::ISODateWithMs));
 	return metadata;
@@ -540,26 +592,34 @@ QJsonObject transcriptMetadataObject(bool completed)
 
 void writeTranscriptMetadata(bool completed = false)
 {
-	if (transcriptMetadataPath.isEmpty()) return;
+	if (transcriptMetadataPath.isEmpty())
+		return;
 	QSaveFile file(transcriptMetadataPath);
 	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-		PixelionDebugLog::write("ERROR", QStringLiteral("Could not open transcript session metadata: %1").arg(transcriptMetadataPath));
+		PixelionDebugLog::write(
+			"ERROR",
+			QStringLiteral("Could not open transcript session metadata: %1").arg(transcriptMetadataPath));
 		return;
 	}
 	const QByteArray json = QJsonDocument(transcriptMetadataObject(completed)).toJson(QJsonDocument::Indented);
 	if (file.write(json) != json.size() || !file.commit())
-		PixelionDebugLog::write("ERROR", QStringLiteral("Could not save transcript session metadata: %1").arg(transcriptMetadataPath));
+		PixelionDebugLog::write(
+			"ERROR",
+			QStringLiteral("Could not save transcript session metadata: %1").arg(transcriptMetadataPath));
 }
 
 void updateSavedTranscriptJobId(const QString &metadataPath, const QString &jobId, const QString &url)
 {
-	if (metadataPath.isEmpty() || jobId.isEmpty()) return;
+	if (metadataPath.isEmpty() || jobId.isEmpty())
+		return;
 	QFile input(metadataPath);
-	if (!input.open(QIODevice::ReadOnly)) return;
+	if (!input.open(QIODevice::ReadOnly))
+		return;
 	QJsonParseError error;
 	QJsonDocument document = QJsonDocument::fromJson(input.readAll(), &error);
 	input.close();
-	if (error.error != QJsonParseError::NoError || !document.isObject()) return;
+	if (error.error != QJsonParseError::NoError || !document.isObject())
+		return;
 	QJsonObject object = document.object();
 	object.insert(QStringLiteral("job_id"), jobId);
 	if (!url.isEmpty()) {
@@ -569,49 +629,59 @@ void updateSavedTranscriptJobId(const QString &metadataPath, const QString &jobI
 	QSaveFile output(metadataPath);
 	if (output.open(QIODevice::WriteOnly | QIODevice::Text)) {
 		const QByteArray json = QJsonDocument(object).toJson(QJsonDocument::Indented);
-		if (output.write(json) == json.size()) output.commit();
+		if (output.write(json) == json.size())
+			output.commit();
 	}
 }
 
 void writeTranscriptSnapshot(const QString &text)
 {
-	if (!saveTranscriptLocally || transcriptFilePath.isEmpty()) return;
+	if (!saveTranscriptLocally || transcriptFilePath.isEmpty())
+		return;
 	QSaveFile file(transcriptFilePath);
 	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
 		blog(LOG_WARNING, "Pixelion Live Captions: could not open local transcript checkpoint");
-		PixelionDebugLog::write("ERROR", QStringLiteral("Could not open local transcript checkpoint: %1").arg(transcriptFilePath));
+		PixelionDebugLog::write(
+			"ERROR",
+			QStringLiteral("Could not open local transcript checkpoint: %1").arg(transcriptFilePath));
 		return;
 	}
 	const QByteArray utf8 = text.toUtf8();
-	if (file.write(utf8) != utf8.size() || !file.commit())
-		{
-			blog(LOG_WARNING, "Pixelion Live Captions: could not write local transcript checkpoint");
-			PixelionDebugLog::write("ERROR", QStringLiteral("Could not write local transcript checkpoint: %1").arg(transcriptFilePath));
-		}
+	if (file.write(utf8) != utf8.size() || !file.commit()) {
+		blog(LOG_WARNING, "Pixelion Live Captions: could not write local transcript checkpoint");
+		PixelionDebugLog::write(
+			"ERROR",
+			QStringLiteral("Could not write local transcript checkpoint: %1").arg(transcriptFilePath));
+	}
 }
 
 void appendTranscriptDelta(const QString &delta)
 {
-	if (!saveTranscriptLocally || transcriptFilePath.isEmpty() || delta.isEmpty()) return;
+	if (!saveTranscriptLocally || transcriptFilePath.isEmpty() || delta.isEmpty())
+		return;
 	QFile file(transcriptFilePath);
 	if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
 		blog(LOG_WARNING, "Pixelion Live Captions: could not append local transcript checkpoint");
-		PixelionDebugLog::write("ERROR", QStringLiteral("Could not append local transcript checkpoint: %1").arg(transcriptFilePath));
+		PixelionDebugLog::write(
+			"ERROR",
+			QStringLiteral("Could not append local transcript checkpoint: %1").arg(transcriptFilePath));
 		return;
 	}
 	const QByteArray utf8 = delta.toUtf8();
-	if (file.write(utf8) != utf8.size() || !file.flush())
-		{
-			blog(LOG_WARNING, "Pixelion Live Captions: could not flush local transcript checkpoint");
-			PixelionDebugLog::write("ERROR", QStringLiteral("Could not flush local transcript checkpoint: %1").arg(transcriptFilePath));
-		}
+	if (file.write(utf8) != utf8.size() || !file.flush()) {
+		blog(LOG_WARNING, "Pixelion Live Captions: could not flush local transcript checkpoint");
+		PixelionDebugLog::write(
+			"ERROR",
+			QStringLiteral("Could not flush local transcript checkpoint: %1").arg(transcriptFilePath));
+	}
 }
 
 bool exportTranscriptFile(const QFileInfo &source, const QString &format, QWidget *parent)
 {
 	QFile input(source.absoluteFilePath());
 	if (!input.open(QIODevice::ReadOnly | QIODevice::Text)) {
-		QMessageBox::warning(parent, QStringLiteral("Export transcript"), QStringLiteral("Could not read the selected transcript."));
+		QMessageBox::warning(parent, QStringLiteral("Export transcript"),
+				     QStringLiteral("Could not read the selected transcript."));
 		return false;
 	}
 	const QString plainText = QString::fromUtf8(input.readAll());
@@ -629,45 +699,66 @@ bool exportTranscriptFile(const QFileInfo &source, const QString &format, QWidge
 			metadata = QJsonDocument::fromJson(metadataFile.readAll(), &parseError);
 			metadataFile.close();
 		}
-		const QJsonArray cues = metadata.isObject() ? metadata.object().value(QStringLiteral("cues")).toArray() : QJsonArray();
+		const QJsonArray cues = metadata.isObject() ? metadata.object().value(QStringLiteral("cues")).toArray()
+							    : QJsonArray();
 		if (cues.isEmpty()) {
-			QMessageBox::information(parent, QStringLiteral("Export transcript"),
-						 QStringLiteral("This session has no saved caption timestamps. TXT export is available, but SRT/VTT cannot be created without timestamps."));
+			QMessageBox::information(
+				parent, QStringLiteral("Export transcript"),
+				QStringLiteral(
+					"This session has no saved caption timestamps. TXT export is available, but SRT/VTT cannot be created without timestamps."));
 			return false;
 		}
-		if (extension == QStringLiteral("vtt")) output = QStringLiteral("WEBVTT\n\n");
+		if (extension == QStringLiteral("vtt"))
+			output = QStringLiteral("WEBVTT\n\n");
 		int cueNumber = 0;
 		for (const auto &value : cues) {
 			const QJsonObject cue = value.toObject();
 			const qint64 startMs = static_cast<qint64>(cue.value(QStringLiteral("start_ms")).toDouble());
 			const qint64 endMs = static_cast<qint64>(cue.value(QStringLiteral("end_ms")).toDouble());
-			QString text = cue.value(QStringLiteral("text")).toString().replace(QStringLiteral("\r\n"), QStringLiteral("\n")).replace(QLatin1Char('\r'), QLatin1Char('\n')).trimmed();
+			QString text = cue.value(QStringLiteral("text"))
+					       .toString()
+					       .replace(QStringLiteral("\r\n"), QStringLiteral("\n"))
+					       .replace(QLatin1Char('\r'), QLatin1Char('\n'))
+					       .trimmed();
 			text.replace(QStringLiteral("-->"), QStringLiteral("->"));
-			if (text.isEmpty()) continue;
+			if (text.isEmpty())
+				continue;
 			if (extension == QStringLiteral("vtt")) {
-				text.replace(QLatin1Char('&'), QStringLiteral("&amp;")).replace(QLatin1Char('<'), QStringLiteral("&lt;")).replace(QLatin1Char('>'), QStringLiteral("&gt;"));
-				output += QStringLiteral("%1 --> %2\n%3\n\n").arg(formatCaptionTimestamp(startMs, QLatin1Char('.')), formatCaptionTimestamp(endMs, QLatin1Char('.')), text);
+				text.replace(QLatin1Char('&'), QStringLiteral("&amp;"))
+					.replace(QLatin1Char('<'), QStringLiteral("&lt;"))
+					.replace(QLatin1Char('>'), QStringLiteral("&gt;"));
+				output += QStringLiteral("%1 --> %2\n%3\n\n")
+						  .arg(formatCaptionTimestamp(startMs, QLatin1Char('.')),
+						       formatCaptionTimestamp(endMs, QLatin1Char('.')), text);
 			} else {
 				output += QStringLiteral("%1\n%2 --> %3\n%4\n\n")
-						  .arg(++cueNumber).arg(formatCaptionTimestamp(startMs, QLatin1Char(',')), formatCaptionTimestamp(endMs, QLatin1Char(',')), text);
+						  .arg(++cueNumber)
+						  .arg(formatCaptionTimestamp(startMs, QLatin1Char(',')),
+						       formatCaptionTimestamp(endMs, QLatin1Char(',')), text);
 			}
 		}
 	}
 	QString suggested = source.absoluteFilePath();
-	if (suggested.endsWith(QStringLiteral(".partial.txt"))) suggested.chop(QStringLiteral(".partial.txt").size());
-	else if (suggested.endsWith(QStringLiteral(".txt"))) suggested.chop(4);
+	if (suggested.endsWith(QStringLiteral(".partial.txt")))
+		suggested.chop(QStringLiteral(".partial.txt").size());
+	else if (suggested.endsWith(QStringLiteral(".txt")))
+		suggested.chop(4);
 	suggested += QLatin1Char('.') + extension;
-	const QString target = QFileDialog::getSaveFileName(parent, QStringLiteral("Export transcript"), suggested,
-										 QStringLiteral("%1 files (*.%2)").arg(extension.toUpper(), extension));
-	if (target.isEmpty()) return false;
+	const QString target =
+		QFileDialog::getSaveFileName(parent, QStringLiteral("Export transcript"), suggested,
+					     QStringLiteral("%1 files (*.%2)").arg(extension.toUpper(), extension));
+	if (target.isEmpty())
+		return false;
 	QSaveFile outputFile(target);
 	if (!outputFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-		QMessageBox::warning(parent, QStringLiteral("Export transcript"), QStringLiteral("Could not create the export file."));
+		QMessageBox::warning(parent, QStringLiteral("Export transcript"),
+				     QStringLiteral("Could not create the export file."));
 		return false;
 	}
 	const QByteArray bytes = output.toUtf8();
 	if (outputFile.write(bytes) != bytes.size() || !outputFile.commit()) {
-		QMessageBox::warning(parent, QStringLiteral("Export transcript"), QStringLiteral("Could not finish writing the export file."));
+		QMessageBox::warning(parent, QStringLiteral("Export transcript"),
+				     QStringLiteral("Could not finish writing the export file."));
 		return false;
 	}
 	return true;
@@ -676,7 +767,8 @@ bool exportTranscriptFile(const QFileInfo &source, const QString &format, QWidge
 bool saveSessionMetadata(const QString &path, const QJsonObject &object)
 {
 	QSaveFile file(path);
-	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return false;
+	if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+		return false;
 	const QByteArray bytes = QJsonDocument(object).toJson(QJsonDocument::Indented);
 	return file.write(bytes) == bytes.size() && file.commit();
 }
@@ -684,7 +776,8 @@ bool saveSessionMetadata(const QString &path, const QJsonObject &object)
 QJsonObject readSessionMetadata(const QString &path)
 {
 	QFile file(path);
-	if (!file.open(QIODevice::ReadOnly)) return {};
+	if (!file.open(QIODevice::ReadOnly))
+		return {};
 	QJsonParseError error;
 	const auto document = QJsonDocument::fromJson(file.readAll(), &error);
 	return error.error == QJsonParseError::NoError && document.isObject() ? document.object() : QJsonObject();
@@ -700,7 +793,11 @@ void syncTranscriptToPixelion(PixelionAuthService *auth, QNetworkAccessManager *
 	const QString sessionId = metadata.value(QStringLiteral("session_id")).toString();
 	const QJsonArray cues = metadata.value(QStringLiteral("cues")).toArray();
 	if (!auth || !network || sessionId.isEmpty() || cues.isEmpty()) {
-		completion(false, QStringLiteral("This transcript is missing session IDs or timestamped caption data. Only sessions created with the updated plugin can be synced."), {});
+		completion(
+			false,
+			QStringLiteral(
+				"This transcript is missing session IDs or timestamped caption data. Only sessions created with the updated plugin can be synced."),
+			{});
 		return;
 	}
 	if (metadata.value(QStringLiteral("library_state")).toString() == QStringLiteral("saved")) {
@@ -713,26 +810,32 @@ void syncTranscriptToPixelion(PixelionAuthService *auth, QNetworkAccessManager *
 	QJsonArray segments;
 	qint64 durationMs = 0;
 	const QString mode = metadata.value(QStringLiteral("mode")).toString(QStringLiteral("transcribe"));
-	const QString sourceLanguage = metadata.value(QStringLiteral("source_language")).toString(QStringLiteral("auto"));
+	const QString sourceLanguage =
+		metadata.value(QStringLiteral("source_language")).toString(QStringLiteral("auto"));
 	const QString targetLanguage = metadata.value(QStringLiteral("target_language")).toString();
 	for (const auto &value : cues) {
 		const QJsonObject cue = value.toObject();
-		const qint64 startMs = std::max<qint64>(0, static_cast<qint64>(cue.value(QStringLiteral("start_ms")).toDouble()));
-		const qint64 endMs = std::max(startMs, static_cast<qint64>(cue.value(QStringLiteral("end_ms")).toDouble()));
+		const qint64 startMs =
+			std::max<qint64>(0, static_cast<qint64>(cue.value(QStringLiteral("start_ms")).toDouble()));
+		const qint64 endMs =
+			std::max(startMs, static_cast<qint64>(cue.value(QStringLiteral("end_ms")).toDouble()));
 		const QString text = cue.value(QStringLiteral("text")).toString().trimmed();
-		if (text.isEmpty()) continue;
+		if (text.isEmpty())
+			continue;
 		durationMs = std::max(durationMs, endMs);
 		segments.append(QJsonObject{{QStringLiteral("start_ms"), static_cast<double>(startMs)},
 					    {QStringLiteral("end_ms"), static_cast<double>(endMs)},
 					    {QStringLiteral("text"), text},
-					    {QStringLiteral("language"), mode == QStringLiteral("translate") ? targetLanguage : sourceLanguage}});
+					    {QStringLiteral("language"),
+					     mode == QStringLiteral("translate") ? targetLanguage : sourceLanguage}});
 	}
 	if (segments.isEmpty()) {
 		completion(false, QStringLiteral("There are no captions to sync for this session."), {});
 		return;
 	}
 	QString title = metadata.value(QStringLiteral("title")).toString();
-	if (title.isEmpty()) title = transcript.completeBaseName().replace(QStringLiteral(".partial"), QString());
+	if (title.isEmpty())
+		title = transcript.completeBaseName().replace(QStringLiteral(".partial"), QString());
 	QJsonObject body{{QStringLiteral("client_session_id"), sessionId},
 			 {QStringLiteral("job_id"), metadata.value(QStringLiteral("job_id")).toString(sessionId)},
 			 {QStringLiteral("platform"), QStringLiteral("obs")},
@@ -740,49 +843,68 @@ void syncTranscriptToPixelion(PixelionAuthService *auth, QNetworkAccessManager *
 			 {QStringLiteral("duration_seconds"), static_cast<double>(durationMs) / 1000.0},
 			 {QStringLiteral("mode"), mode},
 			 {QStringLiteral("source_language"), sourceLanguage},
-			 {QStringLiteral("target_language"), mode == QStringLiteral("translate") ? QJsonValue(targetLanguage) : QJsonValue::Null},
+			 {QStringLiteral("target_language"),
+			  mode == QStringLiteral("translate") ? QJsonValue(targetLanguage) : QJsonValue::Null},
 			 {QStringLiteral("client_version"), QStringLiteral("0.1.0")},
 			 {QStringLiteral("segments"), segments}};
 	metadata.insert(QStringLiteral("library_state"), QStringLiteral("inflight"));
 	saveSessionMetadata(metadataPath, metadata);
 	QPointer<QWidget> parentGuard(parent);
-	auth->withAccessToken([network, metadataPath, metadata, body, completion, parentGuard](bool ok, const QString &accessToken, const QString &error) mutable {
+	auth->withAccessToken([network, metadataPath, metadata, body, completion,
+			       parentGuard](bool ok, const QString &accessToken, const QString &error) mutable {
 		if (!ok) {
 			metadata.insert(QStringLiteral("library_state"), QStringLiteral("idle"));
 			saveSessionMetadata(metadataPath, metadata);
-			completion(false, error.isEmpty() ? QStringLiteral("Sign in to Pixelion before syncing this transcript.") : error, {});
+			completion(false,
+				   error.isEmpty()
+					   ? QStringLiteral("Sign in to Pixelion before syncing this transcript.")
+					   : error,
+				   {});
 			return;
 		}
-		QNetworkRequest request(QUrl(QStringLiteral(PIXELION_API_BASE_URL) + QStringLiteral("/obs/library-job")));
+		QNetworkRequest request(
+			QUrl(QStringLiteral(PIXELION_API_BASE_URL) + QStringLiteral("/obs/library-job")));
 		request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
 		request.setRawHeader("Authorization", QByteArray("Bearer ") + accessToken.toUtf8());
 		request.setTransferTimeout(30000);
 		auto *reply = network->post(request, QJsonDocument(body).toJson(QJsonDocument::Compact));
-		QObject::connect(reply, &QNetworkReply::finished, network, [reply, metadataPath, metadata, completion, parentGuard]() mutable {
-			const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-			const QByteArray response = reply->readAll().left(64 * 1024);
-			const QString networkError = reply->errorString();
-			reply->deleteLater();
-			QJsonParseError parseError;
-			const QJsonDocument document = QJsonDocument::fromJson(response, &parseError);
-			const QJsonObject result = document.object();
-			const QString jobId = result.value(QStringLiteral("job_id")).toString();
-			const QString url = result.value(QStringLiteral("url")).toString();
-			if (status == 200 && parseError.error == QJsonParseError::NoError && url.startsWith(QStringLiteral("https://")) && !jobId.isEmpty()) {
-				metadata.insert(QStringLiteral("job_id"), jobId);
-				metadata.insert(QStringLiteral("library_state"), QStringLiteral("saved"));
-				metadata.insert(QStringLiteral("library_url"), url);
+		QObject::connect(
+			reply, &QNetworkReply::finished, network,
+			[reply, metadataPath, metadata, completion, parentGuard]() mutable {
+				const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+				const QByteArray response = reply->readAll().left(64 * 1024);
+				const QString networkError = reply->errorString();
+				reply->deleteLater();
+				QJsonParseError parseError;
+				const QJsonDocument document = QJsonDocument::fromJson(response, &parseError);
+				const QJsonObject result = document.object();
+				const QString jobId = result.value(QStringLiteral("job_id")).toString();
+				const QString url = result.value(QStringLiteral("url")).toString();
+				if (status == 200 && parseError.error == QJsonParseError::NoError &&
+				    url.startsWith(QStringLiteral("https://")) && !jobId.isEmpty()) {
+					metadata.insert(QStringLiteral("job_id"), jobId);
+					metadata.insert(QStringLiteral("library_state"), QStringLiteral("saved"));
+					metadata.insert(QStringLiteral("library_url"), url);
+					saveSessionMetadata(metadataPath, metadata);
+					completion(true, QStringLiteral("Transcript synced to Pixelion."), url);
+					return;
+				}
+				metadata.insert(QStringLiteral("library_state"), QStringLiteral("idle"));
 				saveSessionMetadata(metadataPath, metadata);
-				completion(true, QStringLiteral("Transcript synced to Pixelion."), url);
-				return;
-			}
-			metadata.insert(QStringLiteral("library_state"), QStringLiteral("idle"));
-			saveSessionMetadata(metadataPath, metadata);
-			QString message = result.value(QStringLiteral("message")).toString();
-			if (message.isEmpty()) message = networkError.isEmpty() ? QStringLiteral("Pixelion sync failed (HTTP %1). Check your connection and try again.").arg(status) : networkError;
-			completion(false, message, {});
-			if (parentGuard) PixelionDebugLog::write("ERROR", QStringLiteral("Manual Pixelion transcript sync failed: %1").arg(message));
-		});
+				QString message = result.value(QStringLiteral("message")).toString();
+				if (message.isEmpty())
+					message =
+						networkError.isEmpty()
+							? QStringLiteral(
+								  "Pixelion sync failed (HTTP %1). Check your connection and try again.")
+								  .arg(status)
+							: networkError;
+				completion(false, message, {});
+				if (parentGuard)
+					PixelionDebugLog::write(
+						"ERROR", QStringLiteral("Manual Pixelion transcript sync failed: %1")
+								 .arg(message));
+			});
 	});
 }
 
@@ -790,14 +912,16 @@ void openTranscriptHistory(QWidget *parent, PixelionAuthService *auth, QNetworkA
 {
 	QString directory = transcriptDirectory;
 	if (directory.isEmpty())
-		directory = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(QStringLiteral("Pixelion Live Captions"));
+		directory = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
+				    .filePath(QStringLiteral("Pixelion Live Captions"));
 	QDialog dialog(parent);
 	dialog.setWindowTitle(QStringLiteral("Transcription history"));
 	dialog.resize(820, 460);
 	auto *layout = new QVBoxLayout(&dialog);
 	auto *table = new QTableWidget(&dialog);
 	table->setColumnCount(4);
-	table->setHorizontalHeaderLabels({QStringLiteral("Session"), QStringLiteral("Last saved"), QStringLiteral("Status"), QStringLiteral("Duration")});
+	table->setHorizontalHeaderLabels({QStringLiteral("Session"), QStringLiteral("Last saved"),
+					  QStringLiteral("Status"), QStringLiteral("Duration")});
 	table->horizontalHeaderItem(3)->setToolTip(QStringLiteral("Time Pixelion Live was connected and listening."));
 	table->setSelectionBehavior(QAbstractItemView::SelectRows);
 	table->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -815,18 +939,24 @@ void openTranscriptHistory(QWidget *parent, PixelionAuthService *auth, QNetworkA
 		auto *titleItem = new QTableWidgetItem(title);
 		titleItem->setData(Qt::UserRole, info.absoluteFilePath());
 		table->setItem(row, 0, titleItem);
-		table->setItem(row, 1, new QTableWidgetItem(info.lastModified().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"))));
-		QString rowStatus = info.fileName().contains(QStringLiteral(".partial.")) ? QStringLiteral("Recoverable") : QStringLiteral("Completed");
+		table->setItem(
+			row, 1,
+			new QTableWidgetItem(info.lastModified().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"))));
+		QString rowStatus = info.fileName().contains(QStringLiteral(".partial."))
+					    ? QStringLiteral("Recoverable")
+					    : QStringLiteral("Completed");
 		QString duration = QStringLiteral("—");
 		QFile metadataFile(info.absoluteFilePath() + QStringLiteral(".session.json"));
 		if (metadataFile.open(QIODevice::ReadOnly)) {
 			const auto metadata = QJsonDocument::fromJson(metadataFile.readAll()).object();
 			const QString sessionId = metadata.value(QStringLiteral("session_id")).toString();
 			const QString jobId = metadata.value(QStringLiteral("job_id")).toString();
-			if (metadata.value(QStringLiteral("library_state")).toString() == QStringLiteral("saved")) rowStatus = QStringLiteral("Synced");
+			if (metadata.value(QStringLiteral("library_state")).toString() == QStringLiteral("saved"))
+				rowStatus = QStringLiteral("Synced");
 			duration = formatSessionDuration(metadata);
 			if (!sessionId.isEmpty() || !jobId.isEmpty())
-				table->item(row, 0)->setToolTip(QStringLiteral("Session ID: %1\nJob ID: %2").arg(sessionId, jobId));
+				table->item(row, 0)->setToolTip(
+					QStringLiteral("Session ID: %1\nJob ID: %2").arg(sessionId, jobId));
 		}
 		table->setItem(row, 2, new QTableWidgetItem(rowStatus));
 		table->setItem(row, 3, new QTableWidgetItem(duration));
@@ -855,112 +985,194 @@ void openTranscriptHistory(QWidget *parent, PixelionAuthService *auth, QNetworkA
 	actions->addStretch(1);
 	actions->addWidget(close);
 	layout->addLayout(actions);
-	QObject::connect(table, &QTableWidget::itemSelectionChanged, &dialog, [table, open, exportButton, renameButton, deleteButton, syncButton] {
-		const bool selected = table->currentRow() >= 0;
-		open->setEnabled(selected);
-		exportButton->setEnabled(selected);
-		const int row = table->currentRow();
-		const QString path = selected ? table->item(row, 0)->data(Qt::UserRole).toString() : QString();
-		const bool active = selected && path == transcriptFilePath;
-		renameButton->setEnabled(selected && !active);
-		deleteButton->setEnabled(selected && !active);
-		const auto metadata = readSessionMetadata(path + QStringLiteral(".session.json"));
-		const bool synced = metadata.value(QStringLiteral("library_state")).toString() == QStringLiteral("saved");
-		syncButton->setText(synced ? QStringLiteral("Open in Pixelion") : QStringLiteral("Sync to Pixelion"));
-		syncButton->setEnabled(selected && !metadata.value(QStringLiteral("session_id")).toString().isEmpty());
-	});
+	QObject::connect(
+		table, &QTableWidget::itemSelectionChanged, &dialog,
+		[table, open, exportButton, renameButton, deleteButton, syncButton] {
+			const bool selected = table->currentRow() >= 0;
+			open->setEnabled(selected);
+			exportButton->setEnabled(selected);
+			const int row = table->currentRow();
+			const QString path = selected ? table->item(row, 0)->data(Qt::UserRole).toString() : QString();
+			const bool active = selected && path == transcriptFilePath;
+			renameButton->setEnabled(selected && !active);
+			deleteButton->setEnabled(selected && !active);
+			const auto metadata = readSessionMetadata(path + QStringLiteral(".session.json"));
+			const bool synced = metadata.value(QStringLiteral("library_state")).toString() ==
+					    QStringLiteral("saved");
+			syncButton->setText(synced ? QStringLiteral("Open in Pixelion")
+						   : QStringLiteral("Sync to Pixelion"));
+			syncButton->setEnabled(selected &&
+					       !metadata.value(QStringLiteral("session_id")).toString().isEmpty());
+		});
 	QObject::connect(open, &QPushButton::clicked, &dialog, [table] {
 		const int row = table->currentRow();
-		if (row >= 0) QDesktopServices::openUrl(QUrl::fromLocalFile(table->item(row, 0)->data(Qt::UserRole).toString()));
+		if (row >= 0)
+			QDesktopServices::openUrl(
+				QUrl::fromLocalFile(table->item(row, 0)->data(Qt::UserRole).toString()));
 	});
 	QObject::connect(exportButton, &QPushButton::clicked, &dialog, [table, format, &dialog] {
 		const int row = table->currentRow();
-		if (row >= 0 && exportTranscriptFile(QFileInfo(table->item(row, 0)->data(Qt::UserRole).toString()), format->currentText().toLower(), &dialog))
-			QMessageBox::information(&dialog, QStringLiteral("Export transcript"), QStringLiteral("Transcript exported successfully."));
+		if (row >= 0 && exportTranscriptFile(QFileInfo(table->item(row, 0)->data(Qt::UserRole).toString()),
+						     format->currentText().toLower(), &dialog))
+			QMessageBox::information(&dialog, QStringLiteral("Export transcript"),
+						 QStringLiteral("Transcript exported successfully."));
 	});
 	QObject::connect(renameButton, &QPushButton::clicked, &dialog, [table, &dialog] {
 		const int row = table->currentRow();
-		if (row < 0) return;
+		if (row < 0)
+			return;
 		const QString oldPath = table->item(row, 0)->data(Qt::UserRole).toString();
-		if (oldPath == transcriptFilePath) { QMessageBox::information(&dialog, QStringLiteral("Rename session"), QStringLiteral("Stop this session before renaming its transcript.")); return; }
+		if (oldPath == transcriptFilePath) {
+			QMessageBox::information(&dialog, QStringLiteral("Rename session"),
+						 QStringLiteral("Stop this session before renaming its transcript."));
+			return;
+		}
 		QFileInfo oldInfo(oldPath);
 		QString oldBase = oldInfo.fileName();
-		if (oldBase.endsWith(QStringLiteral(".partial.txt"))) oldBase.chop(QStringLiteral(".partial.txt").size());
-		else if (oldBase.endsWith(QStringLiteral(".txt"))) oldBase.chop(4);
+		if (oldBase.endsWith(QStringLiteral(".partial.txt")))
+			oldBase.chop(QStringLiteral(".partial.txt").size());
+		else if (oldBase.endsWith(QStringLiteral(".txt")))
+			oldBase.chop(4);
 		bool accepted = false;
-		QString name = QInputDialog::getText(&dialog, QStringLiteral("Rename session"), QStringLiteral("Session name:"), QLineEdit::Normal, oldBase, &accepted).trimmed();
-		if (!accepted) return;
+		QString name = QInputDialog::getText(&dialog, QStringLiteral("Rename session"),
+						     QStringLiteral("Session name:"), QLineEdit::Normal, oldBase,
+						     &accepted)
+				       .trimmed();
+		if (!accepted)
+			return;
 		for (QChar &character : name)
-			if (character.unicode() < 32 || QStringLiteral("<>:\"/\\|?*").contains(character)) character = QLatin1Char('-');
-		while (name.endsWith(QLatin1Char('.')) || name.endsWith(QLatin1Char(' '))) name.chop(1);
-		if (name.isEmpty()) { QMessageBox::warning(&dialog, QStringLiteral("Rename session"), QStringLiteral("Enter a valid session name.")); return; }
-		if (name.size() > 100) name = name.left(100).trimmed();
-		const QString suffix = oldPath.endsWith(QStringLiteral(".partial.txt")) ? QStringLiteral(".partial.txt") : QStringLiteral(".txt");
+			if (character.unicode() < 32 || QStringLiteral("<>:\"/\\|?*").contains(character))
+				character = QLatin1Char('-');
+		while (name.endsWith(QLatin1Char('.')) || name.endsWith(QLatin1Char(' ')))
+			name.chop(1);
+		if (name.isEmpty()) {
+			QMessageBox::warning(&dialog, QStringLiteral("Rename session"),
+					     QStringLiteral("Enter a valid session name."));
+			return;
+		}
+		if (name.size() > 100)
+			name = name.left(100).trimmed();
+		const QString suffix = oldPath.endsWith(QStringLiteral(".partial.txt")) ? QStringLiteral(".partial.txt")
+											: QStringLiteral(".txt");
 		const QString newPath = oldInfo.dir().filePath(name + suffix);
 		const QString oldMetadata = oldPath + QStringLiteral(".session.json");
 		const QString newMetadata = newPath + QStringLiteral(".session.json");
-		if (newPath == oldPath) return;
-		if (QFileInfo::exists(newPath) || QFileInfo::exists(newMetadata)) { QMessageBox::warning(&dialog, QStringLiteral("Rename session"), QStringLiteral("A session with that name already exists.")); return; }
-		if (!QFile::rename(oldPath, newPath)) { QMessageBox::warning(&dialog, QStringLiteral("Rename session"), QStringLiteral("Could not rename the transcript file.")); return; }
+		if (newPath == oldPath)
+			return;
+		if (QFileInfo::exists(newPath) || QFileInfo::exists(newMetadata)) {
+			QMessageBox::warning(&dialog, QStringLiteral("Rename session"),
+					     QStringLiteral("A session with that name already exists."));
+			return;
+		}
+		if (!QFile::rename(oldPath, newPath)) {
+			QMessageBox::warning(&dialog, QStringLiteral("Rename session"),
+					     QStringLiteral("Could not rename the transcript file."));
+			return;
+		}
 		if (QFileInfo::exists(oldMetadata) && !QFile::rename(oldMetadata, newMetadata)) {
 			QFile::rename(newPath, oldPath);
-			QMessageBox::warning(&dialog, QStringLiteral("Rename session"), QStringLiteral("Could not rename the session metadata."));
+			QMessageBox::warning(&dialog, QStringLiteral("Rename session"),
+					     QStringLiteral("Could not rename the session metadata."));
 			return;
 		}
 		QJsonObject metadata = readSessionMetadata(newMetadata);
-		if (!metadata.isEmpty()) { metadata.insert(QStringLiteral("title"), name); saveSessionMetadata(newMetadata, metadata); }
+		if (!metadata.isEmpty()) {
+			metadata.insert(QStringLiteral("title"), name);
+			saveSessionMetadata(newMetadata, metadata);
+		}
 		table->item(row, 0)->setText(name);
 		table->item(row, 0)->setData(Qt::UserRole, newPath);
-		table->item(row, 1)->setText(QFileInfo(newPath).lastModified().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")));
+		table->item(row, 1)->setText(
+			QFileInfo(newPath).lastModified().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")));
 	});
 	QObject::connect(deleteButton, &QPushButton::clicked, &dialog, [table, &dialog] {
 		const int row = table->currentRow();
-		if (row < 0) return;
+		if (row < 0)
+			return;
 		const QString path = table->item(row, 0)->data(Qt::UserRole).toString();
-		if (path == transcriptFilePath) { QMessageBox::information(&dialog, QStringLiteral("Delete session"), QStringLiteral("Stop this session before deleting its transcript.")); return; }
+		if (path == transcriptFilePath) {
+			QMessageBox::information(&dialog, QStringLiteral("Delete session"),
+						 QStringLiteral("Stop this session before deleting its transcript."));
+			return;
+		}
 		const auto metadata = readSessionMetadata(path + QStringLiteral(".session.json"));
-		const bool synced = metadata.value(QStringLiteral("library_state")).toString() == QStringLiteral("saved");
-		const QString prompt = synced
-			? QStringLiteral("Delete the local transcript and its metadata? The Pixelion Library copy will remain.")
-			: QStringLiteral("Permanently delete this local transcript and its session metadata?");
-		if (QMessageBox::question(&dialog, QStringLiteral("Delete session"), prompt, QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes) return;
+		const bool synced = metadata.value(QStringLiteral("library_state")).toString() ==
+				    QStringLiteral("saved");
+		const QString prompt =
+			synced ? QStringLiteral(
+					 "Delete the local transcript and its metadata? The Pixelion Library copy will remain.")
+			       : QStringLiteral("Permanently delete this local transcript and its session metadata?");
+		if (QMessageBox::question(&dialog, QStringLiteral("Delete session"), prompt,
+					  QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
+			return;
 		const QString metadataPath = path + QStringLiteral(".session.json");
 		if (!QFile::remove(path) && QFileInfo::exists(path)) {
-			QMessageBox::warning(&dialog, QStringLiteral("Delete session"), QStringLiteral("Could not delete the transcript file."));
+			QMessageBox::warning(&dialog, QStringLiteral("Delete session"),
+					     QStringLiteral("Could not delete the transcript file."));
 			return;
 		}
 		if (!QFile::remove(metadataPath) && QFileInfo::exists(metadataPath)) {
-			QMessageBox::warning(&dialog, QStringLiteral("Delete session"), QStringLiteral("The transcript was deleted, but its session metadata could not be removed."));
+			QMessageBox::warning(
+				&dialog, QStringLiteral("Delete session"),
+				QStringLiteral(
+					"The transcript was deleted, but its session metadata could not be removed."));
 		}
 		table->removeRow(row);
 	});
 	QObject::connect(syncButton, &QPushButton::clicked, &dialog, [table, syncButton, auth, network, &dialog] {
 		const int row = table->currentRow();
-		if (row < 0) return;
+		if (row < 0)
+			return;
 		const QString path = table->item(row, 0)->data(Qt::UserRole).toString();
-		if (path.endsWith(QStringLiteral(".partial.txt"))) { QMessageBox::information(&dialog, QStringLiteral("Sync to Pixelion"), QStringLiteral("Stop the session before syncing its transcript.")); return; }
+		if (path.endsWith(QStringLiteral(".partial.txt"))) {
+			QMessageBox::information(&dialog, QStringLiteral("Sync to Pixelion"),
+						 QStringLiteral("Stop the session before syncing its transcript."));
+			return;
+		}
 		const auto metadata = readSessionMetadata(path + QStringLiteral(".session.json"));
 		if (metadata.value(QStringLiteral("library_state")).toString() == QStringLiteral("saved")) {
 			const QString url = metadata.value(QStringLiteral("library_url")).toString();
-			if (url.startsWith(QStringLiteral("https://"))) QDesktopServices::openUrl(QUrl(url));
-			else QMessageBox::information(&dialog, QStringLiteral("Pixelion Library"), QStringLiteral("This session is synced, but Pixelion did not return a library link."));
+			if (url.startsWith(QStringLiteral("https://")))
+				QDesktopServices::openUrl(QUrl(url));
+			else
+				QMessageBox::information(
+					&dialog, QStringLiteral("Pixelion Library"),
+					QStringLiteral(
+						"This session is synced, but Pixelion did not return a library link."));
 			return;
 		}
-		if (!auth || !auth->isSignedIn()) { QMessageBox::information(&dialog, QStringLiteral("Sync to Pixelion"), QStringLiteral("Sign in to Pixelion in the dock, then select this session and try again.")); return; }
+		if (!auth || !auth->isSignedIn()) {
+			QMessageBox::information(
+				&dialog, QStringLiteral("Sync to Pixelion"),
+				QStringLiteral(
+					"Sign in to Pixelion in the dock, then select this session and try again."));
+			return;
+		}
 		syncButton->setEnabled(false);
 		syncButton->setText(QStringLiteral("Syncing…"));
 		QPointer<QDialog> dialogGuard(&dialog);
 		QPointer<QTableWidget> tableGuard(table);
-		syncTranscriptToPixelion(auth, network, QFileInfo(path), &dialog, [dialogGuard, tableGuard, row, syncButton](bool ok, const QString &message, const QString &url) {
-			if (!dialogGuard) return;
-			if (tableGuard && row < tableGuard->rowCount()) {
-				if (ok && !url.isEmpty()) {
-					tableGuard->item(row, 2)->setText(QStringLiteral("Synced"));
-				}
-			}
-			if (syncButton) { syncButton->setEnabled(true); syncButton->setText(ok ? QStringLiteral("Open in Pixelion") : QStringLiteral("Sync to Pixelion")); }
-			QMessageBox::information(dialogGuard, ok ? QStringLiteral("Pixelion Library") : QStringLiteral("Sync to Pixelion"), message);
-		});
+		syncTranscriptToPixelion(auth, network, QFileInfo(path), &dialog,
+					 [dialogGuard, tableGuard, row, syncButton](bool ok, const QString &message,
+										    const QString &url) {
+						 if (!dialogGuard)
+							 return;
+						 if (tableGuard && row < tableGuard->rowCount()) {
+							 if (ok && !url.isEmpty()) {
+								 tableGuard->item(row, 2)->setText(
+									 QStringLiteral("Synced"));
+							 }
+						 }
+						 if (syncButton) {
+							 syncButton->setEnabled(true);
+							 syncButton->setText(ok ? QStringLiteral("Open in Pixelion")
+										: QStringLiteral("Sync to Pixelion"));
+						 }
+						 QMessageBox::information(dialogGuard,
+									  ok ? QStringLiteral("Pixelion Library")
+									     : QStringLiteral("Sync to Pixelion"),
+									  message);
+					 });
 	});
 	QObject::connect(close, &QPushButton::clicked, &dialog, &QDialog::accept);
 	dialog.exec();
@@ -987,13 +1199,16 @@ void beginLocalTranscript()
 	pendingCueText.clear();
 	pendingCueStartMs = -1;
 	lastCaptionDeltaMs = -1;
-	if (!saveTranscriptLocally) return;
+	if (!saveTranscriptLocally)
+		return;
 	if (transcriptDirectory.isEmpty())
-		transcriptDirectory = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(QStringLiteral("Pixelion Live Captions"));
+		transcriptDirectory = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
+					      .filePath(QStringLiteral("Pixelion Live Captions"));
 	QDir directory(transcriptDirectory);
 	if (!directory.exists() && !QDir().mkpath(transcriptDirectory)) {
 		blog(LOG_WARNING, "Pixelion Live Captions: could not create transcript folder");
-		PixelionDebugLog::write("ERROR", QStringLiteral("Could not create transcript folder: %1").arg(transcriptDirectory));
+		PixelionDebugLog::write(
+			"ERROR", QStringLiteral("Could not create transcript folder: %1").arg(transcriptDirectory));
 		return;
 	}
 	const QDateTime now = QDateTime::currentDateTime();
@@ -1006,9 +1221,13 @@ void beginLocalTranscript()
 			character = QLatin1Char('-');
 	}
 	base = base.trimmed();
-	while (base.endsWith(QLatin1Char('.')) || base.endsWith(QLatin1Char(' '))) base.chop(1);
-	if (base.isEmpty()) base = QStringLiteral("Pixelion Live Captions %1").arg(now.toString(QStringLiteral("yyyy-MM-dd HH-mm-ss")));
-	if (base.size() > 100) base = base.left(100).trimmed();
+	while (base.endsWith(QLatin1Char('.')) || base.endsWith(QLatin1Char(' ')))
+		base.chop(1);
+	if (base.isEmpty())
+		base = QStringLiteral("Pixelion Live Captions %1")
+			       .arg(now.toString(QStringLiteral("yyyy-MM-dd HH-mm-ss")));
+	if (base.size() > 100)
+		base = base.left(100).trimmed();
 	QString candidate = base;
 	QString path = directory.filePath(candidate + QStringLiteral(".partial.txt"));
 	int suffix = 2;
@@ -1021,17 +1240,20 @@ void beginLocalTranscript()
 	transcriptMetadataPath = path + QStringLiteral(".session.json");
 	writeTranscriptSnapshot(QString());
 	writeTranscriptMetadata(false);
-	PixelionDebugLog::write("INFO", QStringLiteral("Started local transcript checkpoint: %1").arg(transcriptFilePath));
+	PixelionDebugLog::write("INFO",
+				QStringLiteral("Started local transcript checkpoint: %1").arg(transcriptFilePath));
 }
 
 QString finalizeLocalTranscript()
 {
 	if (pendingCueStartMs >= 0 && !pendingCueText.trimmed().isEmpty()) {
-		const qint64 endMs = transcriptSessionClock.isValid() ? transcriptSessionClock.elapsed() : std::max<qint64>(pendingCueStartMs, 0);
+		const qint64 endMs = transcriptSessionClock.isValid() ? transcriptSessionClock.elapsed()
+								      : std::max<qint64>(pendingCueStartMs, 0);
 		commitPendingCue(endMs);
 	}
 	const QString text = transcriptSnapshot();
-	if (transcriptFilePath.isEmpty()) return text;
+	if (transcriptFilePath.isEmpty())
+		return text;
 	writeTranscriptSnapshot(text);
 	if (text.trimmed().isEmpty()) {
 		QFile::remove(transcriptFilePath);
@@ -1047,23 +1269,30 @@ QString finalizeLocalTranscript()
 	const QString finalMetadataPath = completedPath + QStringLiteral(".session.json");
 	if (!QFile::rename(finalPath, completedPath)) {
 		blog(LOG_WARNING, "Pixelion Live Captions: transcript saved as a recoverable partial file");
-		PixelionDebugLog::write("WARNING", QStringLiteral("Transcript could not be renamed after the session; recoverable file remains at %1").arg(finalPath));
+		PixelionDebugLog::write(
+			"WARNING",
+			QStringLiteral(
+				"Transcript could not be renamed after the session; recoverable file remains at %1")
+				.arg(finalPath));
 	} else {
 		QFile::rename(transcriptMetadataPath, finalMetadataPath);
 		transcriptMetadataPath = finalMetadataPath;
-		PixelionDebugLog::write("INFO", QStringLiteral("Saved completed local transcript: %1").arg(completedPath));
+		PixelionDebugLog::write("INFO",
+					QStringLiteral("Saved completed local transcript: %1").arg(completedPath));
 	}
 	transcriptFilePath.clear();
 	return text;
 }
 
 void saveTranscriptToPixelion(PixelionAuthService *auth, QNetworkAccessManager *network, QPointer<QLabel> status,
-				     const QString &sessionId, const QString &mode, const QString &sourceLanguage,
-				     const QString &targetLanguage, qint64 startedAtMs, const QString &text,
-				     const QString &metadataPath)
+			      const QString &sessionId, const QString &mode, const QString &sourceLanguage,
+			      const QString &targetLanguage, qint64 startedAtMs, const QString &text,
+			      const QString &metadataPath)
 {
-	if (!auth || !network || sessionId.isEmpty() || text.trimmed().isEmpty()) return;
-	PixelionDebugLog::write("INFO", QStringLiteral("Starting Pixelion Library upload for session %1").arg(sessionId));
+	if (!auth || !network || sessionId.isEmpty() || text.trimmed().isEmpty())
+		return;
+	PixelionDebugLog::write("INFO",
+				QStringLiteral("Starting Pixelion Library upload for session %1").arg(sessionId));
 	QPointer<QNetworkAccessManager> networkGuard(network);
 	const qint64 durationMs = std::max<qint64>(1000, QDateTime::currentMSecsSinceEpoch() - startedAtMs);
 	QJsonArray segments;
@@ -1071,13 +1300,17 @@ void saveTranscriptToPixelion(PixelionAuthService *auth, QNetworkAccessManager *
 	for (const auto &value : storedMetadata.value(QStringLiteral("cues")).toArray()) {
 		const QJsonObject cue = value.toObject();
 		const QString cueText = cue.value(QStringLiteral("text")).toString().trimmed();
-		if (cueText.isEmpty()) continue;
-		const qint64 startMs = std::max<qint64>(0, static_cast<qint64>(cue.value(QStringLiteral("start_ms")).toDouble()));
-		const qint64 endMs = std::max(startMs, static_cast<qint64>(cue.value(QStringLiteral("end_ms")).toDouble()));
+		if (cueText.isEmpty())
+			continue;
+		const qint64 startMs =
+			std::max<qint64>(0, static_cast<qint64>(cue.value(QStringLiteral("start_ms")).toDouble()));
+		const qint64 endMs =
+			std::max(startMs, static_cast<qint64>(cue.value(QStringLiteral("end_ms")).toDouble()));
 		segments.append(QJsonObject{{QStringLiteral("start_ms"), static_cast<double>(startMs)},
 					    {QStringLiteral("end_ms"), static_cast<double>(endMs)},
 					    {QStringLiteral("text"), cueText},
-					    {QStringLiteral("language"), mode == QStringLiteral("translate") ? targetLanguage : sourceLanguage}});
+					    {QStringLiteral("language"),
+					     mode == QStringLiteral("translate") ? targetLanguage : sourceLanguage}});
 	}
 	// Older local records may have no cue metadata. Keep them uploadable as one
 	// untimed body segment instead of inventing evenly spaced timestamps.
@@ -1085,29 +1318,42 @@ void saveTranscriptToPixelion(PixelionAuthService *auth, QNetworkAccessManager *
 		segments.append(QJsonObject{{QStringLiteral("start_ms"), 0},
 					    {QStringLiteral("end_ms"), static_cast<double>(durationMs)},
 					    {QStringLiteral("text"), text.trimmed()},
-					    {QStringLiteral("language"), mode == QStringLiteral("translate") ? targetLanguage : sourceLanguage}});
+					    {QStringLiteral("language"),
+					     mode == QStringLiteral("translate") ? targetLanguage : sourceLanguage}});
 	}
-	if (segments.isEmpty()) return;
+	if (segments.isEmpty())
+		return;
 	const QString now = QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
-	const QString title = storedMetadata.value(QStringLiteral("title")).toString(QStringLiteral("Pixelion Live Captions %1").arg(now));
+	const QString title = storedMetadata.value(QStringLiteral("title"))
+				      .toString(QStringLiteral("Pixelion Live Captions %1").arg(now));
 	QJsonObject body{{QStringLiteral("client_session_id"), sessionId},
 			 {QStringLiteral("job_id"), sessionId},
 			 {QStringLiteral("platform"), QStringLiteral("obs")},
 			 {QStringLiteral("title"), title},
 			 {QStringLiteral("duration_seconds"), static_cast<double>(durationMs / 1000)},
 			 {QStringLiteral("mode"), mode},
-			 {QStringLiteral("source_language"), sourceLanguage.isEmpty() ? QStringLiteral("auto") : sourceLanguage},
-			 {QStringLiteral("target_language"), mode == QStringLiteral("translate") ? QJsonValue(targetLanguage) : QJsonValue::Null},
+			 {QStringLiteral("source_language"),
+			  sourceLanguage.isEmpty() ? QStringLiteral("auto") : sourceLanguage},
+			 {QStringLiteral("target_language"),
+			  mode == QStringLiteral("translate") ? QJsonValue(targetLanguage) : QJsonValue::Null},
 			 {QStringLiteral("client_version"), QStringLiteral("0.1.0")},
 			 {QStringLiteral("segments"), segments}};
-	auth->withAccessToken([networkGuard, status, body, metadataPath, sessionId](bool ok, const QString &accessToken, const QString &error) {
+	auth->withAccessToken([networkGuard, status, body, metadataPath, sessionId](bool ok, const QString &accessToken,
+										    const QString &error) {
 		if (!ok) {
-			PixelionDebugLog::write("ERROR", QStringLiteral("Pixelion Library upload could not get an access token: %1").arg(error));
-			if (status) status->setText(QStringLiteral("Transcript saved locally. Pixelion Library save failed: %1").arg(error));
+			PixelionDebugLog::write(
+				"ERROR",
+				QStringLiteral("Pixelion Library upload could not get an access token: %1").arg(error));
+			if (status)
+				status->setText(
+					QStringLiteral("Transcript saved locally. Pixelion Library save failed: %1")
+						.arg(error));
 			return;
 		}
-		if (!networkGuard) return;
-		QNetworkRequest request(QUrl(QStringLiteral(PIXELION_API_BASE_URL) + QStringLiteral("/obs/library-job")));
+		if (!networkGuard)
+			return;
+		QNetworkRequest request(
+			QUrl(QStringLiteral(PIXELION_API_BASE_URL) + QStringLiteral("/obs/library-job")));
 		request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
 		request.setRawHeader("Authorization", QByteArray("Bearer ") + accessToken.toUtf8());
 		request.setTransferTimeout(30000);
@@ -1121,27 +1367,47 @@ void saveTranscriptToPixelion(PixelionAuthService *auth, QNetworkAccessManager *
 				QJsonParseError parsedError;
 				const QJsonDocument saved = QJsonDocument::fromJson(responseBody, &parsedError);
 				const QJsonObject savedObject = saved.object();
-				const QString returnedJobId = parsedError.error == QJsonParseError::NoError && saved.isObject()
-					? savedObject.value(QStringLiteral("job_id")).toString() : QString();
+				const QString returnedJobId =
+					parsedError.error == QJsonParseError::NoError && saved.isObject()
+						? savedObject.value(QStringLiteral("job_id")).toString()
+						: QString();
 				const QString savedUrl = savedObject.value(QStringLiteral("url")).toString();
 				if (!returnedJobId.isEmpty()) {
 					updateSavedTranscriptJobId(metadataPath, returnedJobId, savedUrl);
-					if (transcriptSessionId == sessionId) transcriptJobId = returnedJobId;
-					PixelionDebugLog::write("INFO", QStringLiteral("Pixelion Library job linked to session %1 as job %2").arg(sessionId, returnedJobId));
+					if (transcriptSessionId == sessionId)
+						transcriptJobId = returnedJobId;
+					PixelionDebugLog::write(
+						"INFO",
+						QStringLiteral("Pixelion Library job linked to session %1 as job %2")
+							.arg(sessionId, returnedJobId));
 				}
-				PixelionDebugLog::write("INFO", QStringLiteral("Pixelion Library upload completed successfully (HTTP 200)"));
-				if (status) status->setText(QStringLiteral("Transcript saved locally and to your Pixelion Library."));
+				PixelionDebugLog::write(
+					"INFO",
+					QStringLiteral("Pixelion Library upload completed successfully (HTTP 200)"));
+				if (status)
+					status->setText(QStringLiteral(
+						"Transcript saved locally and to your Pixelion Library."));
 			} else {
-				blog(LOG_WARNING, "Pixelion Live Captions: Pixelion Library save failed (HTTP %d)", statusCode);
+				blog(LOG_WARNING, "Pixelion Live Captions: Pixelion Library save failed (HTTP %d)",
+				     statusCode);
 				QJsonParseError parseError;
 				const QJsonDocument parsed = QJsonDocument::fromJson(responseBody, &parseError);
-				const QString detail = parseError.error == QJsonParseError::NoError
-					? parsed.object().value(QStringLiteral("message")).toString() : networkError;
-				PixelionDebugLog::write("ERROR", QStringLiteral("Pixelion Library upload failed (HTTP %1): %2")
-								.arg(statusCode).arg(detail.isEmpty() ? networkError : detail));
-				if (status) status->setText(detail.isEmpty()
-					? QStringLiteral("Transcript saved locally. Automatic Pixelion Library upload did not complete.")
-					: QStringLiteral("Transcript saved locally. Pixelion Library save failed: %1").arg(detail));
+				const QString detail =
+					parseError.error == QJsonParseError::NoError
+						? parsed.object().value(QStringLiteral("message")).toString()
+						: networkError;
+				PixelionDebugLog::write("ERROR",
+							QStringLiteral("Pixelion Library upload failed (HTTP %1): %2")
+								.arg(statusCode)
+								.arg(detail.isEmpty() ? networkError : detail));
+				if (status)
+					status->setText(
+						detail.isEmpty()
+							? QStringLiteral(
+								  "Transcript saved locally. Automatic Pixelion Library upload did not complete.")
+							: QStringLiteral(
+								  "Transcript saved locally. Pixelion Library save failed: %1")
+								  .arg(detail));
 			}
 		});
 	});
@@ -1169,13 +1435,23 @@ struct StyleSnapshot {
 StyleSnapshot currentStyle()
 {
 	QMutexLocker lock(&styleMutex);
-	return {captionFont, captionTextColor, captionBackgroundColor, captionFontSize,
-		captionBackgroundOpacity, captionTextAlignment, captionVisibleLines, captionBackgroundMode, captionPadding, liveCaptionText, styleRevision};
+	return {captionFont,
+		captionTextColor,
+		captionBackgroundColor,
+		captionFontSize,
+		captionBackgroundOpacity,
+		captionTextAlignment,
+		captionVisibleLines,
+		captionBackgroundMode,
+		captionPadding,
+		liveCaptionText,
+		styleRevision};
 }
 
 QString visibleCaptionTail(const QString &text)
 {
-	if (text.isEmpty()) return {};
+	if (text.isEmpty())
+		return {};
 	QFont font = captionFont;
 	font.setPixelSize(static_cast<int>(captionFontSize));
 	QStringList wrappedLines;
@@ -1192,7 +1468,8 @@ QString visibleCaptionTail(const QString &text)
 		layout.beginLayout();
 		while (true) {
 			QTextLine line = layout.createLine();
-			if (!line.isValid()) break;
+			if (!line.isValid())
+				break;
 			line.setLineWidth(static_cast<qreal>(kOverlayWidth - 2 * captionPadding));
 			wrappedLines.append(paragraph.mid(line.textStart(), line.textLength()));
 		}
@@ -1208,7 +1485,8 @@ void rebuildCaptionDisplay()
 {
 	QString text = captionCommittedDisplayText;
 	if (!captionDraftDisplayText.isEmpty()) {
-		if (!text.isEmpty()) text += QLatin1Char('\n');
+		if (!text.isEmpty())
+			text += QLatin1Char('\n');
 		text += captionDraftDisplayText;
 	}
 	liveCaptionText = visibleCaptionTail(text);
@@ -1219,7 +1497,8 @@ void updateCaptionText(const QString &text, bool final)
 	const qint64 nowMs = transcriptSessionClock.isValid() ? transcriptSessionClock.elapsed() : 0;
 	if (final) {
 		if (!text.trimmed().isEmpty()) {
-			if (pendingCueStartMs < 0) pendingCueStartMs = nowMs;
+			if (pendingCueStartMs < 0)
+				pendingCueStartMs = nowMs;
 			// Provider final text is the corrected full utterance, so replace its deltas.
 			pendingCueText = text.trimmed();
 			commitPendingCue(nowMs);
@@ -1227,7 +1506,8 @@ void updateCaptionText(const QString &text, bool final)
 	} else if (!text.isEmpty()) {
 		if (pendingCueStartMs >= 0 && lastCaptionDeltaMs >= 0 && nowMs - lastCaptionDeltaMs >= 2000)
 			commitPendingCue(lastCaptionDeltaMs);
-		if (pendingCueStartMs < 0) pendingCueStartMs = nowMs;
+		if (pendingCueStartMs < 0)
+			pendingCueStartMs = nowMs;
 		pendingCueText += text;
 		lastCaptionDeltaMs = nowMs;
 	}
@@ -1236,12 +1516,14 @@ void updateCaptionText(const QString &text, bool final)
 		QMutexLocker lock(&styleMutex);
 		if (final) {
 			if (!text.trimmed().isEmpty()) {
-				if (!captionCommittedDisplayText.isEmpty()) captionCommittedDisplayText += QLatin1Char('\n');
+				if (!captionCommittedDisplayText.isEmpty())
+					captionCommittedDisplayText += QLatin1Char('\n');
 				captionCommittedDisplayText += text.trimmed();
 			}
 			captionDraftDisplayText.clear();
 			if (!text.trimmed().isEmpty()) {
-				if (!transcriptCommittedText.isEmpty()) transcriptCommittedText += QLatin1Char('\n');
+				if (!transcriptCommittedText.isEmpty())
+					transcriptCommittedText += QLatin1Char('\n');
 				transcriptCommittedText += text.trimmed();
 			}
 			transcriptDraftText.clear();
@@ -1252,14 +1534,17 @@ void updateCaptionText(const QString &text, bool final)
 		rebuildCaptionDisplay();
 		snapshot = transcriptCommittedText;
 		if (!transcriptDraftText.isEmpty()) {
-			if (!snapshot.isEmpty()) snapshot += QLatin1Char('\n');
+			if (!snapshot.isEmpty())
+				snapshot += QLatin1Char('\n');
 			snapshot += transcriptDraftText;
 		}
 		++styleRevision;
 	}
 	// Append streaming deltas cheaply; atomically reconcile provider corrections on final revisions.
-	if (final) writeTranscriptSnapshot(snapshot);
-	else appendTranscriptDelta(text);
+	if (final)
+		writeTranscriptSnapshot(snapshot);
+	else
+		appendTranscriptDelta(text);
 	writeTranscriptMetadata(false);
 }
 
@@ -1277,7 +1562,8 @@ void saveStyle()
 	obs_data_t *settings = obs_data_create();
 	obs_data_set_string(settings, "font_family", style.font.family().toUtf8().constData());
 	obs_data_set_string(settings, "text_color", style.textColor.name(QColor::HexRgb).toUtf8().constData());
-	obs_data_set_string(settings, "background_color", style.backgroundColor.name(QColor::HexRgb).toUtf8().constData());
+	obs_data_set_string(settings, "background_color",
+			    style.backgroundColor.name(QColor::HexRgb).toUtf8().constData());
 	obs_data_set_int(settings, "font_size", style.fontSize);
 	obs_data_set_int(settings, "background_opacity", style.backgroundOpacity);
 	obs_data_set_int(settings, "text_alignment", style.textAlignment);
@@ -1306,16 +1592,19 @@ void loadStyle()
 	}
 	if (obs_data_has_user_value(settings, "text_color")) {
 		const QColor color(QString::fromUtf8(obs_data_get_string(settings, "text_color")));
-		if (color.isValid()) captionTextColor = color;
+		if (color.isValid())
+			captionTextColor = color;
 	}
 	if (obs_data_has_user_value(settings, "background_color")) {
 		const QColor color(QString::fromUtf8(obs_data_get_string(settings, "background_color")));
-		if (color.isValid()) captionBackgroundColor = color;
+		if (color.isValid())
+			captionBackgroundColor = color;
 	}
 	if (obs_data_has_user_value(settings, "font_size"))
 		captionFontSize = std::clamp<int64_t>(obs_data_get_int(settings, "font_size"), 8, 120);
 	if (obs_data_has_user_value(settings, "background_opacity"))
-		captionBackgroundOpacity = std::clamp<int64_t>(obs_data_get_int(settings, "background_opacity"), 0, 100);
+		captionBackgroundOpacity =
+			std::clamp<int64_t>(obs_data_get_int(settings, "background_opacity"), 0, 100);
 	if (obs_data_has_user_value(settings, "text_alignment"))
 		captionTextAlignment = std::clamp<int64_t>(obs_data_get_int(settings, "text_alignment"), 0, 2);
 	if (obs_data_has_user_value(settings, "visible_lines"))
@@ -1356,8 +1645,12 @@ void setCaptionColor(ColorTarget target, const QColor &color)
 	{
 		QMutexLocker lock(&styleMutex);
 		switch (target) {
-		case ColorTarget::Text: captionTextColor = color; break;
-		case ColorTarget::Background: captionBackgroundColor = color; break;
+		case ColorTarget::Text:
+			captionTextColor = color;
+			break;
+		case ColorTarget::Background:
+			captionBackgroundColor = color;
+			break;
 		}
 		++styleRevision;
 	}
@@ -1443,7 +1736,10 @@ void styleButton(QPushButton *button, const QColor &color)
 		QPushButton { background-color: %1; color: %2; }
 		QPushButton:hover { background-color: %3; }
 		QPushButton:pressed { background-color: %4; }
-	)").arg(color.name(QColor::HexArgb), foreground, color.lighter(118).name(QColor::HexArgb), color.darker(118).name(QColor::HexArgb)));
+	)")
+				      .arg(color.name(QColor::HexArgb), foreground,
+					   color.lighter(118).name(QColor::HexArgb),
+					   color.darker(118).name(QColor::HexArgb)));
 }
 
 QPushButton *makeColorControl(const QString &title, ColorTarget target, QWidget *parent)
@@ -1505,7 +1801,8 @@ void captionSourceRender(void *data, gs_effect_t *effect)
 	auto *source = static_cast<CaptionSource *>(data);
 	const auto style = currentStyle();
 	if (style.revision != source->textureRevision || !source->texture) {
-		QImage canvas(static_cast<int>(kOverlayWidth), static_cast<int>(kOverlayHeight), QImage::Format_ARGB32_Premultiplied);
+		QImage canvas(static_cast<int>(kOverlayWidth), static_cast<int>(kOverlayHeight),
+			      QImage::Format_ARGB32_Premultiplied);
 		canvas.fill(Qt::transparent);
 		if (style.backgroundMode == 0) {
 			QColor background = style.backgroundColor;
@@ -1521,8 +1818,10 @@ void captionSourceRender(void *data, gs_effect_t *effect)
 		painter.setPen(style.textColor);
 		const QFontMetrics metrics(font);
 		const int lineHeight = metrics.lineSpacing();
-		const int textHeight = std::min(static_cast<int>(kOverlayHeight) - 2 * static_cast<int>(style.padding), lineHeight * static_cast<int>(style.visibleLines));
-		const QRect textRect(static_cast<int>(style.padding), (static_cast<int>(kOverlayHeight) - textHeight) / 2,
+		const int textHeight = std::min(static_cast<int>(kOverlayHeight) - 2 * static_cast<int>(style.padding),
+						lineHeight * static_cast<int>(style.visibleLines));
+		const QRect textRect(static_cast<int>(style.padding),
+				     (static_cast<int>(kOverlayHeight) - textHeight) / 2,
 				     static_cast<int>(kOverlayWidth) - 2 * static_cast<int>(style.padding), textHeight);
 		int alignment = static_cast<int>(Qt::AlignVCenter) | static_cast<int>(Qt::TextWordWrap);
 		if (style.textAlignment == 0)
@@ -1531,7 +1830,9 @@ void captionSourceRender(void *data, gs_effect_t *effect)
 			alignment |= static_cast<int>(Qt::AlignRight);
 		else
 			alignment |= static_cast<int>(Qt::AlignHCenter);
-		const QString previewText = style.captionText.isEmpty() ? QStringLiteral("Your captions will appear here") : style.captionText;
+		const QString previewText = style.captionText.isEmpty()
+						    ? QStringLiteral("Your captions will appear here")
+						    : style.captionText;
 		painter.drawText(textRect, alignment, previewText);
 		painter.end();
 
@@ -1567,8 +1868,11 @@ vec2 defaultCaptionPosition()
 	vec2 position = {};
 	obs_video_info videoInfo = {};
 	if (obs_get_video_info(&videoInfo)) {
-		position.x = videoInfo.base_width > kOverlayWidth ? (videoInfo.base_width - kOverlayWidth) / 2.0f : 0.0f;
-		position.y = videoInfo.base_height > kOverlayHeight + 80 ? videoInfo.base_height - kOverlayHeight - 80.0f : 0.0f;
+		position.x = videoInfo.base_width > kOverlayWidth ? (videoInfo.base_width - kOverlayWidth) / 2.0f
+								  : 0.0f;
+		position.y = videoInfo.base_height > kOverlayHeight + 80
+				     ? videoInfo.base_height - kOverlayHeight - 80.0f
+				     : 0.0f;
 	}
 	return position;
 }
@@ -1594,8 +1898,8 @@ bool deselectSceneItems(obs_scene_t *, obs_sceneitem_t *item, void *)
 void addOrSelectCaptionArea(QLabel *status)
 {
 	obs_source_t *sceneSource = obs_frontend_preview_program_mode_active()
-				    ? obs_frontend_get_current_preview_scene()
-				    : obs_frontend_get_current_scene();
+					    ? obs_frontend_get_current_preview_scene()
+					    : obs_frontend_get_current_scene();
 	if (!sceneSource) {
 		status->setText(QStringLiteral("Select a scene before adding the caption area."));
 		return;
@@ -1629,7 +1933,8 @@ void addOrSelectCaptionArea(QLabel *status)
 		obs_sceneitem_set_locked(item, false);
 		obs_sceneitem_set_visible(item, true);
 		obs_sceneitem_select(item, true);
-		status->setText(QStringLiteral("Caption area selected. Drag it in the preview or use its handles to resize."));
+		status->setText(
+			QStringLiteral("Caption area selected. Drag it in the preview or use its handles to resize."));
 		obs_sceneitem_release(item);
 	} else {
 		status->setText(QStringLiteral("Could not add the caption area to this scene."));
@@ -1640,8 +1945,8 @@ void addOrSelectCaptionArea(QLabel *status)
 bool resetCaptionArea(QLabel *status)
 {
 	obs_source_t *sceneSource = obs_frontend_preview_program_mode_active()
-				    ? obs_frontend_get_current_preview_scene()
-				    : obs_frontend_get_current_scene();
+					    ? obs_frontend_get_current_preview_scene()
+					    : obs_frontend_get_current_scene();
 	if (!sceneSource) {
 		status->setText(QStringLiteral("Select a scene before resetting the caption area."));
 		return false;
@@ -1716,7 +2021,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	auto *logo = new QLabel(brandRow);
 	logo->setFixedSize(40, 40);
 	logo->setAlignment(Qt::AlignCenter);
-	logo->setPixmap(QPixmap(QStringLiteral(":/pixelion/logo.png")).scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+	logo->setPixmap(QPixmap(QStringLiteral(":/pixelion/logo.png"))
+				.scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
 	logo->setAccessibleName(QStringLiteral("Pixelion logo"));
 	brandLayout->addWidget(logo, 0, Qt::AlignTop);
 	auto *brandCopy = new QWidget(brandRow);
@@ -1750,7 +2056,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	layout->addWidget(brandRow);
 	auto *brandAccent = new QFrame(content);
 	brandAccent->setFixedHeight(3);
-	brandAccent->setStyleSheet(QStringLiteral("border: 0; border-radius: 1px; background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7828a8, stop:0.55 #e5007d, stop:1 #ffca05);"));
+	brandAccent->setStyleSheet(QStringLiteral(
+		"border: 0; border-radius: 1px; background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7828a8, stop:0.55 #e5007d, stop:1 #ffca05);"));
 	layout->addWidget(brandAccent);
 
 	auto *statusRow = new QWidget(content);
@@ -1831,7 +2138,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	layout->addWidget(usageBar);
 	auto *historyButton = new QPushButton(QStringLiteral("Transcription history"), content);
 	layout->addWidget(historyButton);
-	QObject::connect(historyButton, &QPushButton::clicked, root, [root, auth, libraryNetwork] { openTranscriptHistory(root, auth, libraryNetwork); });
+	QObject::connect(historyButton, &QPushButton::clicked, root,
+			 [root, auth, libraryNetwork] { openTranscriptHistory(root, auth, libraryNetwork); });
 	QObject::connect(settingsButton, &QPushButton::clicked, root, [root, auth, session] {
 		QDialog dialog(root);
 		dialog.setWindowTitle(QStringLiteral("Transcript settings"));
@@ -1843,9 +2151,11 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		saveLocally->setChecked(saveTranscriptLocally);
 		saveLocally->setToolTip(QStringLiteral("A recoverable transcript file is updated as captions arrive."));
 		storageLayout->addWidget(saveLocally);
-		auto *saveToPixelion = new QCheckBox(QStringLiteral("Save completed transcripts to Pixelion Library"), storageGroup);
+		auto *saveToPixelion =
+			new QCheckBox(QStringLiteral("Save completed transcripts to Pixelion Library"), storageGroup);
 		saveToPixelion->setChecked(autoSaveTranscriptToPixelion);
-		saveToPixelion->setToolTip(QStringLiteral("Uploads the transcript after a session ends. Local checkpoints are written first."));
+		saveToPixelion->setToolTip(QStringLiteral(
+			"Uploads the transcript after a session ends. Local checkpoints are written first."));
 		storageLayout->addWidget(saveToPixelion);
 		auto *folderRow = new QWidget(storageGroup);
 		auto *folderLayout = new QHBoxLayout(folderRow);
@@ -1861,8 +2171,12 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		storageLayout->addWidget(openTranscripts);
 		QObject::connect(openTranscripts, &QPushButton::clicked, &dialog, [&dialog, folder] {
 			const QString path = folder->text().trimmed();
-			if (path.isEmpty() || !QDir().mkpath(path) || !QDesktopServices::openUrl(QUrl::fromLocalFile(path)))
-				QMessageBox::warning(&dialog, QStringLiteral("Transcript folder"), QStringLiteral("Could not open the transcript folder. Check that the location is available."));
+			if (path.isEmpty() || !QDir().mkpath(path) ||
+			    !QDesktopServices::openUrl(QUrl::fromLocalFile(path)))
+				QMessageBox::warning(
+					&dialog, QStringLiteral("Transcript folder"),
+					QStringLiteral(
+						"Could not open the transcript folder. Check that the location is available."));
 		});
 		auto *patternLabel = new QLabel(QStringLiteral("Transcript filename pattern"), storageGroup);
 		storageLayout->addWidget(patternLabel);
@@ -1870,25 +2184,34 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		filenamePattern->setMaxLength(120);
 		filenamePattern->setPlaceholderText(QStringLiteral("Pixelion Live Captions {date} {time}"));
 		storageLayout->addWidget(filenamePattern);
-		auto *patternHint = new QLabel(QStringLiteral("Available placeholders: {date}, {time}, {mode}. Invalid filename characters are replaced automatically."), storageGroup);
+		auto *patternHint = new QLabel(
+			QStringLiteral(
+				"Available placeholders: {date}, {time}, {mode}. Invalid filename characters are replaced automatically."),
+			storageGroup);
 		patternHint->setWordWrap(true);
 		patternHint->setObjectName(QStringLiteral("mutedText"));
 		storageLayout->addWidget(patternHint);
-		auto *recoveryHint = new QLabel(QStringLiteral("While a session is active, its .partial.txt file is checkpointed after every caption update and renamed to .txt when it ends. Pixelion Library saving is optional and happens after the local transcript is complete."), storageGroup);
+		auto *recoveryHint = new QLabel(
+			QStringLiteral(
+				"While a session is active, its .partial.txt file is checkpointed after every caption update and renamed to .txt when it ends. Pixelion Library saving is optional and happens after the local transcript is complete."),
+			storageGroup);
 		recoveryHint->setWordWrap(true);
 		recoveryHint->setObjectName(QStringLiteral("mutedText"));
 		storageLayout->addWidget(recoveryHint);
 		dialogLayout->addWidget(storageGroup);
 		QObject::connect(browse, &QPushButton::clicked, &dialog, [&dialog, folder] {
-			const QString selected = QFileDialog::getExistingDirectory(&dialog, QStringLiteral("Choose transcript folder"), folder->text());
-			if (!selected.isEmpty()) folder->setText(selected);
+			const QString selected = QFileDialog::getExistingDirectory(
+				&dialog, QStringLiteral("Choose transcript folder"), folder->text());
+			if (!selected.isEmpty())
+				folder->setText(selected);
 		});
 
 		auto *diagnosticsGroup = new QGroupBox(QStringLiteral("Diagnostics"), &dialog);
 		auto *diagnosticsLayout = new QVBoxLayout(diagnosticsGroup);
 		auto *logPath = new QLineEdit(PixelionDebugLog::filePath(), diagnosticsGroup);
 		logPath->setReadOnly(true);
-		logPath->setToolTip(QStringLiteral("Share this file to help diagnose plugin errors. It does not contain transcript text or authentication tokens."));
+		logPath->setToolTip(QStringLiteral(
+			"Share this file to help diagnose plugin errors. It does not contain transcript text or authentication tokens."));
 		diagnosticsLayout->addWidget(logPath);
 		auto *openLogFolder = new QPushButton(QStringLiteral("Open log folder"), diagnosticsGroup);
 		diagnosticsLayout->addWidget(openLogFolder);
@@ -1909,17 +2232,19 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		auto *accountGroup = new QGroupBox(QStringLiteral("Pixelion account"), &dialog);
 		auto *accountLayout = new QVBoxLayout(accountGroup);
 		const QString planName = auth->plan().isEmpty() ? QStringLiteral("Free") : auth->plan();
-		auto *identity = new QLabel(auth->email().isEmpty()
-						? QStringLiteral("Not signed in")
-						: QStringLiteral("%1\n%2 plan · Pixelion account").arg(auth->email(), planName), accountGroup);
+		auto *identity = new QLabel(
+			auth->email().isEmpty()
+				? QStringLiteral("Not signed in")
+				: QStringLiteral("%1\n%2 plan · Pixelion account").arg(auth->email(), planName),
+			accountGroup);
 		identity->setWordWrap(true);
 		accountLayout->addWidget(identity);
 		auto *signOut = new QPushButton(QStringLiteral("Sign out"), accountGroup);
 		signOut->setEnabled(auth->isSignedIn());
 		accountLayout->addWidget(signOut);
 		dialogLayout->addWidget(accountGroup);
-	QObject::connect(signOut, &QPushButton::clicked, &dialog, [auth, &dialog] {
-		PixelionDebugLog::write("INFO", QStringLiteral("User signed out of Pixelion"));
+		QObject::connect(signOut, &QPushButton::clicked, &dialog, [auth, &dialog] {
+			PixelionDebugLog::write("INFO", QStringLiteral("User signed out of Pixelion"));
 			auth->signOut();
 			dialog.accept();
 		});
@@ -1930,7 +2255,9 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		browse->setEnabled(canEdit);
 		filenamePattern->setEnabled(canEdit);
 		if (!canEdit) {
-			auto *activeHint = new QLabel(QStringLiteral("Stop the current session before changing transcript storage settings."), &dialog);
+			auto *activeHint = new QLabel(
+				QStringLiteral("Stop the current session before changing transcript storage settings."),
+				&dialog);
 			activeHint->setWordWrap(true);
 			activeHint->setObjectName(QStringLiteral("mutedText"));
 			dialogLayout->insertWidget(1, activeHint);
@@ -1954,7 +2281,9 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	QPointer<QLabel> accountLabel = accountMessage;
 	QPointer<QPushButton> signInButton = signIn;
 	QPointer<QPushButton> createAccountButton = createAccount;
-	auth->setStateCallback([accountLabel, signInButton, createAccountButton, upgradeButtonPtr = QPointer<QPushButton>(upgradeButton), readiness](const QString &email, const QString &plan, const QString &message) {
+	auth->setStateCallback([accountLabel, signInButton, createAccountButton,
+				upgradeButtonPtr = QPointer<QPushButton>(upgradeButton),
+				readiness](const QString &email, const QString &plan, const QString &message) {
 		const QString normalized = message.toLower();
 		if (normalized.contains(QStringLiteral("could not")) || normalized.contains(QStringLiteral("failed")) ||
 		    normalized.contains(QStringLiteral("error")) || normalized.contains(QStringLiteral("rejected")) ||
@@ -1964,41 +2293,59 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 			PixelionDebugLog::write("INFO", QStringLiteral("Pixelion sign-in succeeded"));
 		if (accountLabel) {
 			const QString planName = plan.isEmpty() ? QStringLiteral("Free") : plan;
-			accountLabel->setText(email.isEmpty() ? message : QStringLiteral("%1\n%2 plan · Pixelion account\nMaximum transcription length: up to %3 minutes")
-										   .arg(email, planName).arg(maximumTranscriptionMinutesForPlan(planName)));
+			accountLabel->setText(
+				email.isEmpty()
+					? message
+					: QStringLiteral(
+						  "%1\n%2 plan · Pixelion account\nMaximum transcription length: up to %3 minutes")
+						  .arg(email, planName)
+						  .arg(maximumTranscriptionMinutesForPlan(planName)));
 		}
 		const bool signedIn = !email.isEmpty();
 		const QString normalizedPlan = plan.trimmed().toLower();
-		if (upgradeButtonPtr && (!signedIn || (!normalizedPlan.isEmpty() && normalizedPlan != QStringLiteral("free"))))
+		if (upgradeButtonPtr &&
+		    (!signedIn || (!normalizedPlan.isEmpty() && normalizedPlan != QStringLiteral("free"))))
 			upgradeButtonPtr->setVisible(false);
-		if (signInButton) signInButton->setVisible(!signedIn);
-		if (createAccountButton) createAccountButton->setVisible(!signedIn);
-		if (readiness && *readiness) (*readiness)();
-		if (signedIn && autoStartHandler) autoStartHandler(streamingActive || recordingActive);
+		if (signInButton)
+			signInButton->setVisible(!signedIn);
+		if (createAccountButton)
+			createAccountButton->setVisible(!signedIn);
+		if (readiness && *readiness)
+			(*readiness)();
+		if (signedIn && autoStartHandler)
+			autoStartHandler(streamingActive || recordingActive);
 	});
-	auth->setUsageCallback([usageSummaryPtr = QPointer<QLabel>(usageSummary), usageBarPtr = QPointer<QProgressBar>(usageBar)](const PixelionAuthService::UsageInfo &usage) {
-		if (!usageSummaryPtr || !usageBarPtr) return;
-		if (usage.loading) {
-			usageSummaryPtr->setText(QStringLiteral("Loading available minutes…"));
-			usageSummaryPtr->setVisible(true);
-			usageBarPtr->setVisible(false);
-		} else if (!usage.known) {
-			usageSummaryPtr->setVisible(false);
-			usageBarPtr->setVisible(false);
-		} else if (usage.unlimited) {
-			usageSummaryPtr->setText(QStringLiteral("Unlimited minutes"));
-			usageSummaryPtr->setVisible(true);
-			usageBarPtr->setVisible(false);
-		} else {
-			const int remaining = std::max(0, usage.limitMinutes - usage.usedMinutes);
-			const QString period = usage.periodKind == QStringLiteral("trial") ? QStringLiteral("in your trial") : QStringLiteral("this month");
-			usageSummaryPtr->setText(QStringLiteral("%1 of %2 minutes remaining %3").arg(remaining).arg(usage.limitMinutes).arg(period));
-			usageSummaryPtr->setVisible(true);
-			usageBarPtr->setRange(0, usage.limitMinutes);
-			usageBarPtr->setValue(usage.usedMinutes);
-			usageBarPtr->setVisible(true);
-		}
-	});
+	auth->setUsageCallback(
+		[usageSummaryPtr = QPointer<QLabel>(usageSummary),
+		 usageBarPtr = QPointer<QProgressBar>(usageBar)](const PixelionAuthService::UsageInfo &usage) {
+			if (!usageSummaryPtr || !usageBarPtr)
+				return;
+			if (usage.loading) {
+				usageSummaryPtr->setText(QStringLiteral("Loading available minutes…"));
+				usageSummaryPtr->setVisible(true);
+				usageBarPtr->setVisible(false);
+			} else if (!usage.known) {
+				usageSummaryPtr->setVisible(false);
+				usageBarPtr->setVisible(false);
+			} else if (usage.unlimited) {
+				usageSummaryPtr->setText(QStringLiteral("Unlimited minutes"));
+				usageSummaryPtr->setVisible(true);
+				usageBarPtr->setVisible(false);
+			} else {
+				const int remaining = std::max(0, usage.limitMinutes - usage.usedMinutes);
+				const QString period = usage.periodKind == QStringLiteral("trial")
+							       ? QStringLiteral("in your trial")
+							       : QStringLiteral("this month");
+				usageSummaryPtr->setText(QStringLiteral("%1 of %2 minutes remaining %3")
+								 .arg(remaining)
+								 .arg(usage.limitMinutes)
+								 .arg(period));
+				usageSummaryPtr->setVisible(true);
+				usageBarPtr->setRange(0, usage.limitMinutes);
+				usageBarPtr->setValue(usage.usedMinutes);
+				usageBarPtr->setVisible(true);
+			}
+		});
 
 	auto *sessionHeading = new QLabel(QStringLiteral("Start a session"), content);
 	QFont sessionHeadingFont = sessionHeading->font();
@@ -2013,17 +2360,39 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	layout->addWidget(mode);
 	auto *sourceLanguage = new QComboBox(content);
 	sourceLanguage->addItem(QStringLiteral("Auto detect"), QStringLiteral("auto"));
-	sourceLanguage->addItems({QStringLiteral("Afrikaans"), QStringLiteral("Arabic"), QStringLiteral("Chinese"), QStringLiteral("Dutch"), QStringLiteral("English"), QStringLiteral("French"), QStringLiteral("German"), QStringLiteral("Hindi"), QStringLiteral("Italian"), QStringLiteral("Japanese"), QStringLiteral("Korean"), QStringLiteral("Portuguese"), QStringLiteral("Russian"), QStringLiteral("Spanish")});
-	const QStringList sourceCodes{QStringLiteral("af"), QStringLiteral("ar"), QStringLiteral("zh"), QStringLiteral("nl"), QStringLiteral("en"), QStringLiteral("fr"), QStringLiteral("de"), QStringLiteral("hi"), QStringLiteral("it"), QStringLiteral("ja"), QStringLiteral("ko"), QStringLiteral("pt"), QStringLiteral("ru"), QStringLiteral("es")};
-	for (int i = 0; i < sourceCodes.size(); ++i) sourceLanguage->setItemData(i + 1, sourceCodes.at(i));
+	sourceLanguage->addItems({QStringLiteral("Afrikaans"), QStringLiteral("Arabic"), QStringLiteral("Chinese"),
+				  QStringLiteral("Dutch"), QStringLiteral("English"), QStringLiteral("French"),
+				  QStringLiteral("German"), QStringLiteral("Hindi"), QStringLiteral("Italian"),
+				  QStringLiteral("Japanese"), QStringLiteral("Korean"), QStringLiteral("Portuguese"),
+				  QStringLiteral("Russian"), QStringLiteral("Spanish")});
+	const QStringList sourceCodes{QStringLiteral("af"), QStringLiteral("ar"), QStringLiteral("zh"),
+				      QStringLiteral("nl"), QStringLiteral("en"), QStringLiteral("fr"),
+				      QStringLiteral("de"), QStringLiteral("hi"), QStringLiteral("it"),
+				      QStringLiteral("ja"), QStringLiteral("ko"), QStringLiteral("pt"),
+				      QStringLiteral("ru"), QStringLiteral("es")};
+	for (int i = 0; i < sourceCodes.size(); ++i)
+		sourceLanguage->setItemData(i + 1, sourceCodes.at(i));
 	layout->addWidget(new QLabel(QStringLiteral("Speech language"), content));
 	layout->addWidget(sourceLanguage);
 	auto *targetLanguage = new QComboBox(content);
-	const QStringList targetNames{QStringLiteral("Chinese"), QStringLiteral("Dutch"), QStringLiteral("English"), QStringLiteral("French"), QStringLiteral("German"), QStringLiteral("Hindi"), QStringLiteral("Italian"), QStringLiteral("Japanese"), QStringLiteral("Korean"), QStringLiteral("Polish"), QStringLiteral("Portuguese"), QStringLiteral("Russian"), QStringLiteral("Spanish")};
-	const QStringList targetCodes{QStringLiteral("zh"), QStringLiteral("nl"), QStringLiteral("en"), QStringLiteral("fr"), QStringLiteral("de"), QStringLiteral("hi"), QStringLiteral("it"), QStringLiteral("ja"), QStringLiteral("ko"), QStringLiteral("pl"), QStringLiteral("pt"), QStringLiteral("ru"), QStringLiteral("es")};
-	for (int i = 0; i < targetNames.size(); ++i) targetLanguage->addItem(targetNames.at(i), targetCodes.at(i));
+	const QStringList targetNames{QStringLiteral("Chinese"),    QStringLiteral("Dutch"),
+				      QStringLiteral("English"),    QStringLiteral("French"),
+				      QStringLiteral("German"),     QStringLiteral("Hindi"),
+				      QStringLiteral("Italian"),    QStringLiteral("Japanese"),
+				      QStringLiteral("Korean"),     QStringLiteral("Polish"),
+				      QStringLiteral("Portuguese"), QStringLiteral("Russian"),
+				      QStringLiteral("Spanish")};
+	const QStringList targetCodes{QStringLiteral("zh"), QStringLiteral("nl"), QStringLiteral("en"),
+				      QStringLiteral("fr"), QStringLiteral("de"), QStringLiteral("hi"),
+				      QStringLiteral("it"), QStringLiteral("ja"), QStringLiteral("ko"),
+				      QStringLiteral("pl"), QStringLiteral("pt"), QStringLiteral("ru"),
+				      QStringLiteral("es")};
+	for (int i = 0; i < targetNames.size(); ++i)
+		targetLanguage->addItem(targetNames.at(i), targetCodes.at(i));
 	restoreLanguageSelections(sourceLanguage, targetLanguage);
-	const auto saveLanguages = [sourceLanguage, targetLanguage] { saveLanguageSelections(sourceLanguage, targetLanguage); };
+	const auto saveLanguages = [sourceLanguage, targetLanguage] {
+		saveLanguageSelections(sourceLanguage, targetLanguage);
+	};
 	QObject::connect(sourceLanguage, qOverload<int>(&QComboBox::currentIndexChanged), root, saveLanguages);
 	QObject::connect(targetLanguage, qOverload<int>(&QComboBox::currentIndexChanged), root, saveLanguages);
 	auto *targetLabel = new QLabel(QStringLiteral("Translate to"), content);
@@ -2031,46 +2400,55 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	layout->addWidget(targetLanguage);
 	targetLanguage->setVisible(false);
 	targetLabel->setVisible(false);
-	QObject::connect(mode, qOverload<int>(&QComboBox::currentIndexChanged), targetLanguage, [targetLanguage](int index) { targetLanguage->setVisible(index == 1); });
-	QObject::connect(mode, qOverload<int>(&QComboBox::currentIndexChanged), targetLabel, [targetLabel](int index) { targetLabel->setVisible(index == 1); });
+	QObject::connect(mode, qOverload<int>(&QComboBox::currentIndexChanged), targetLanguage,
+			 [targetLanguage](int index) { targetLanguage->setVisible(index == 1); });
+	QObject::connect(mode, qOverload<int>(&QComboBox::currentIndexChanged), targetLabel,
+			 [targetLabel](int index) { targetLabel->setVisible(index == 1); });
 	auto *audio = new QLabel(QStringLiteral("Audio input: OBS program mix (default)"), content);
 	audio->setWordWrap(true);
 	audio->setObjectName(QStringLiteral("mutedText"));
 	layout->addWidget(audio);
 	auto *consent = new QCheckBox(QStringLiteral("I agree: send OBS audio to Pixelion"), content);
-	consent->setToolTip(QStringLiteral("OBS program audio is sent to Pixelion for live transcription or translation."));
+	consent->setToolTip(
+		QStringLiteral("OBS program audio is sent to Pixelion for live transcription or translation."));
 	layout->addWidget(consent);
 	*readiness = [auth, consent, session, status, statusDot] {
-		if (session->isRunning()) return;
+		if (session->isRunning())
+			return;
 		const bool consented = auth->isSignedIn() && consent->isChecked();
 		status->setText(consented ? QStringLiteral("Ready to start live captions")
-				      : (auth->isSignedIn() ? QStringLiteral("Agree to audio processing before starting.")
-							   : QStringLiteral("Sign in to Pixelion to set up live captions.")));
+					  : (auth->isSignedIn()
+						     ? QStringLiteral("Agree to audio processing before starting.")
+						     : QStringLiteral("Sign in to Pixelion to set up live captions.")));
 		statusDot->setStyleSheet(consented ? QStringLiteral("background-color: #f0a23a; border-radius: 4px;")
-							: QStringLiteral("background-color: #78808e; border-radius: 4px;"));
+						   : QStringLiteral("background-color: #78808e; border-radius: 4px;"));
 	};
 	(*readiness)();
 	QObject::connect(consent, &QCheckBox::toggled, root, [readiness](bool) {
-		if (readiness && *readiness) (*readiness)();
-		if (autoStartHandler) autoStartHandler(streamingActive || recordingActive);
+		if (readiness && *readiness)
+			(*readiness)();
+		if (autoStartHandler)
+			autoStartHandler(streamingActive || recordingActive);
 	});
 	auto *autoStart = new QCheckBox(QStringLiteral("Start/stop with streaming or recording"), content);
 	autoStart->setChecked(loadAutoStartSetting());
-	autoStart->setToolTip(QStringLiteral("Automatically start captions when OBS starts streaming or recording. Requires audio consent."));
+	autoStart->setToolTip(QStringLiteral(
+		"Automatically start captions when OBS starts streaming or recording. Requires audio consent."));
 	layout->addWidget(autoStart);
 	auto *start = new SpinnerButton(content);
 	const auto updateManualStartAvailability = [autoStart, start] {
 		const bool automatic = autoStart->isChecked();
 		start->setEnabled(!automatic);
-		start->setToolTip(automatic
-				  ? QStringLiteral("Manual start is disabled while automatic start/stop is enabled.")
+		start->setToolTip(
+			automatic ? QStringLiteral("Manual start is disabled while automatic start/stop is enabled.")
 				  : QStringLiteral("Start or stop a live caption session."));
 	};
 	updateManualStartAvailability();
 	QObject::connect(autoStart, &QCheckBox::toggled, root, [start, updateManualStartAvailability](bool enabled) {
 		saveAutoStartSetting(enabled);
 		updateManualStartAvailability();
-		if (autoStartHandler) autoStartHandler(streamingActive || recordingActive);
+		if (autoStartHandler)
+			autoStartHandler(streamingActive || recordingActive);
 	});
 	auto *sessionControls = new QWidget(content);
 	auto *sessionControlsLayout = new QVBoxLayout(sessionControls);
@@ -2089,27 +2467,35 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	sessionControlsLayout->addWidget(start);
 	layout->addWidget(sessionControls);
 	auto limitActionState = std::make_shared<QString>();
-	auto beginSession = [session, auth, mode, sourceLanguage, targetLanguage, consent, status, root, start, limitActionState](bool automatic) {
+	auto beginSession = [session, auth, mode, sourceLanguage, targetLanguage, consent, status, root, start,
+			     limitActionState](bool automatic) {
 		if (session->isRunning()) {
 			return false;
 		}
 		if (!auth->isSignedIn()) {
-			const QString message = automatic ? QStringLiteral("Sign in to Pixelion before OBS can auto-start captions.") : QStringLiteral("Sign in to Pixelion before starting a session.");
+			const QString message =
+				automatic ? QStringLiteral("Sign in to Pixelion before OBS can auto-start captions.")
+					  : QStringLiteral("Sign in to Pixelion before starting a session.");
 			status->setText(message);
 			PixelionDebugLog::write("ERROR", message);
-			if (!automatic) QMessageBox::warning(root, QStringLiteral("Pixelion Captions"), message);
+			if (!automatic)
+				QMessageBox::warning(root, QStringLiteral("Pixelion Captions"), message);
 			return false;
 		}
 		if (!consent->isChecked()) {
 			const QString message = QStringLiteral("Agree to audio processing before starting.");
 			status->setText(message);
 			PixelionDebugLog::write("WARNING", message);
-			if (!automatic) QMessageBox::warning(root, QStringLiteral("Pixelion Captions"), message);
+			if (!automatic)
+				QMessageBox::warning(root, QStringLiteral("Pixelion Captions"), message);
 			return false;
 		}
-		const QString liveMode = mode->currentIndex() == 1 ? QStringLiteral("translate") : QStringLiteral("transcribe");
-		PixelionDebugLog::write("INFO", QStringLiteral("Starting %1 session (speech language: %2, target language: %3)")
-							.arg(liveMode, sourceLanguage->currentData().toString(), targetLanguage->currentData().toString()));
+		const QString liveMode = mode->currentIndex() == 1 ? QStringLiteral("translate")
+								   : QStringLiteral("transcribe");
+		PixelionDebugLog::write("INFO",
+					QStringLiteral("Starting %1 session (speech language: %2, target language: %3)")
+						.arg(liveMode, sourceLanguage->currentData().toString(),
+						     targetLanguage->currentData().toString()));
 		transcriptMode = liveMode;
 		limitActionState->clear();
 		start->setIdleLabel(QStringLiteral("Start"));
@@ -2117,7 +2503,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		transcriptTargetLanguage = targetLanguage->currentData().toString();
 		transcriptSessionStartedAt = QDateTime::currentMSecsSinceEpoch();
 		beginLocalTranscript();
-		session->start(liveMode, sourceLanguage->currentData().toString(), targetLanguage->currentData().toString());
+		session->start(liveMode, sourceLanguage->currentData().toString(),
+			       targetLanguage->currentData().toString());
 		transcriptSessionId = session->sessionId();
 		transcriptJobId = transcriptSessionId;
 		writeTranscriptMetadata(false);
@@ -2126,7 +2513,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	QObject::connect(start, &QPushButton::clicked, root, [session, auth, beginSession, limitActionState] {
 		if (!limitActionState->isEmpty()) {
 			const QString plan = auth->plan().trimmed().toLower();
-			if (*limitActionState == QStringLiteral("duration") && !plan.isEmpty() && plan != QStringLiteral("free"))
+			if (*limitActionState == QStringLiteral("duration") && !plan.isEmpty() &&
+			    plan != QStringLiteral("free"))
 				beginSession(false);
 			else
 				QDesktopServices::openUrl(QUrl(QStringLiteral("https://pixelion.ai/pricing")));
@@ -2139,82 +2527,118 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		beginSession(false);
 	});
 	auto autoStarted = std::make_shared<bool>(false);
-	autoStartHandler = [session, autoStartPtr = QPointer<QCheckBox>(autoStart), beginSession, autoStarted](bool obsActive) {
+	autoStartHandler = [session, autoStartPtr = QPointer<QCheckBox>(autoStart), beginSession,
+			    autoStarted](bool obsActive) {
 		if (!autoStartPtr || !autoStartPtr->isChecked()) {
 			*autoStarted = false;
 			return;
 		}
 		if (!obsActive && *autoStarted) {
 			*autoStarted = false;
-			if (session->isRunning()) session->stop();
+			if (session->isRunning())
+				session->stop();
 		} else if (obsActive) {
 			*autoStarted = session->isRunning() || beginSession(true);
 		}
 	};
-	session->setCallbacks([statusPtr = QPointer<QLabel>(status), statusDotPtr = QPointer<QLabel>(statusDot), upgradeButtonPtr = QPointer<QPushButton>(upgradeButton), startPtr = QPointer<SpinnerButton>(start), activePtr = QPointer<ActiveSessionIndicator>(activeSessionIndicator), timerPtr = QPointer<SessionElapsedTimer>(sessionTimer), readiness, auth, libraryNetwork, limitActionState](bool running, const QString &message) {
-		const QString normalized = message.toLower();
-		const bool requiresPro = normalized.contains(QStringLiteral("requires pixelion pro")) || normalized.contains(QStringLiteral("requires a pro plan"));
-		const bool hasError = normalized.contains(QStringLiteral("error")) || normalized.contains(QStringLiteral("failed")) ||
-			normalized.contains(QStringLiteral("connection was interrupted")) ||
-			normalized.contains(QStringLiteral("could not")) || normalized.contains(QStringLiteral("rejected")) ||
-			requiresPro ||
-			normalized.contains(QStringLiteral("used up")) || normalized.contains(QStringLiteral("limit has been reached"));
-		const QString currentPlan = auth->plan().trimmed().toLower();
-		if (upgradeButtonPtr)
-			upgradeButtonPtr->setVisible(requiresPro && auth->isSignedIn() &&
-				(currentPlan.isEmpty() || currentPlan == QStringLiteral("free")));
-		if (hasError)
-			PixelionDebugLog::write("ERROR", QStringLiteral("Session: %1").arg(message));
-		else
-			PixelionDebugLog::write("INFO", QStringLiteral("Session: %1").arg(message));
-		const bool limitReached = message == QStringLiteral("Your session limit has been reached.");
-		const bool allowanceReached = message == QStringLiteral("Your available Pixelion minutes are used up.");
-		const bool limitWarning = message.startsWith(QStringLiteral("Your session limit is approaching."));
-		const bool connected = running && (message == QStringLiteral("Connected. Listening to OBS program audio.") || limitWarning);
-		if (limitWarning) limitActionState->clear();
-		if (limitReached || allowanceReached) {
-			const QString plan = auth->plan().trimmed().toLower();
-			const bool freeTier = plan.isEmpty() || plan == QStringLiteral("free");
-			*limitActionState = allowanceReached ? QStringLiteral("allowance") : QStringLiteral("duration");
-			if (startPtr) startPtr->setIdleLabel(allowanceReached
-				? (freeTier ? QStringLiteral("Upgrade plan") : QStringLiteral("View plan"))
-				: (freeTier ? QStringLiteral("Upgrade plan") : QStringLiteral("Start new session")));
-		}
-		if (connected) limitActionState->clear();
-		if (connected && !transcriptSessionClock.isValid()) transcriptSessionClock.start();
-		if (startPtr) {
-			startPtr->setSessionRunning(!limitActionState->isEmpty() ? false : running);
-			startPtr->setConnecting(running && !connected && !hasError && !limitReached && !allowanceReached && limitActionState->isEmpty());
-		}
-		if (activePtr) activePtr->setActive(connected);
-		if (timerPtr) timerPtr->setRunning(connected);
-		if (statusDotPtr) {
-			const QString color = hasError ? QStringLiteral("#e56b6f")
-						 : connected ? QStringLiteral("#35c98a")
-							     : (running ? QStringLiteral("#f0a23a") : QStringLiteral("#78808e"));
-			statusDotPtr->setStyleSheet(QStringLiteral("background-color: %1; border-radius: 4px;").arg(color));
-		}
-		if (!running && !hasError) {
-			if (readiness && *readiness) (*readiness)();
-		} else if (statusPtr && !( !limitActionState->isEmpty() && message == QStringLiteral("Session ended."))) {
-			statusPtr->setText(message);
-		}
-		if (!running) {
-			const QString transcript = finalizeLocalTranscript();
-			if (autoSaveTranscriptToPixelion && !transcript.trimmed().isEmpty())
-				saveTranscriptToPixelion(auth, libraryNetwork, hasError ? QPointer<QLabel>() : statusPtr, transcriptSessionId, transcriptMode,
-							transcriptSourceLanguage, transcriptTargetLanguage, transcriptSessionStartedAt, transcript,
-							transcriptMetadataPath);
-		}
-		if (running && statusPtr) statusPtr->setText(message);
-	}, [](const QString &text, bool final) { updateCaptionText(text, final); });
+	session->setCallbacks(
+		[statusPtr = QPointer<QLabel>(status), statusDotPtr = QPointer<QLabel>(statusDot),
+		 upgradeButtonPtr = QPointer<QPushButton>(upgradeButton), startPtr = QPointer<SpinnerButton>(start),
+		 activePtr = QPointer<ActiveSessionIndicator>(activeSessionIndicator),
+		 timerPtr = QPointer<SessionElapsedTimer>(sessionTimer), readiness, auth, libraryNetwork,
+		 limitActionState](bool running, const QString &message) {
+			const QString normalized = message.toLower();
+			const bool requiresPro = normalized.contains(QStringLiteral("requires pixelion pro")) ||
+						 normalized.contains(QStringLiteral("requires a pro plan"));
+			const bool hasError = normalized.contains(QStringLiteral("error")) ||
+					      normalized.contains(QStringLiteral("failed")) ||
+					      normalized.contains(QStringLiteral("connection was interrupted")) ||
+					      normalized.contains(QStringLiteral("could not")) ||
+					      normalized.contains(QStringLiteral("rejected")) || requiresPro ||
+					      normalized.contains(QStringLiteral("used up")) ||
+					      normalized.contains(QStringLiteral("limit has been reached"));
+			const QString currentPlan = auth->plan().trimmed().toLower();
+			if (upgradeButtonPtr)
+				upgradeButtonPtr->setVisible(
+					requiresPro && auth->isSignedIn() &&
+					(currentPlan.isEmpty() || currentPlan == QStringLiteral("free")));
+			if (hasError)
+				PixelionDebugLog::write("ERROR", QStringLiteral("Session: %1").arg(message));
+			else
+				PixelionDebugLog::write("INFO", QStringLiteral("Session: %1").arg(message));
+			const bool limitReached = message == QStringLiteral("Your session limit has been reached.");
+			const bool allowanceReached = message ==
+						      QStringLiteral("Your available Pixelion minutes are used up.");
+			const bool limitWarning =
+				message.startsWith(QStringLiteral("Your session limit is approaching."));
+			const bool connected =
+				running && (message == QStringLiteral("Connected. Listening to OBS program audio.") ||
+					    limitWarning);
+			if (limitWarning)
+				limitActionState->clear();
+			if (limitReached || allowanceReached) {
+				const QString plan = auth->plan().trimmed().toLower();
+				const bool freeTier = plan.isEmpty() || plan == QStringLiteral("free");
+				*limitActionState = allowanceReached ? QStringLiteral("allowance")
+								     : QStringLiteral("duration");
+				if (startPtr)
+					startPtr->setIdleLabel(
+						allowanceReached ? (freeTier ? QStringLiteral("Upgrade plan")
+									     : QStringLiteral("View plan"))
+								 : (freeTier ? QStringLiteral("Upgrade plan")
+									     : QStringLiteral("Start new session")));
+			}
+			if (connected)
+				limitActionState->clear();
+			if (connected && !transcriptSessionClock.isValid())
+				transcriptSessionClock.start();
+			if (startPtr) {
+				startPtr->setSessionRunning(!limitActionState->isEmpty() ? false : running);
+				startPtr->setConnecting(running && !connected && !hasError && !limitReached &&
+							!allowanceReached && limitActionState->isEmpty());
+			}
+			if (activePtr)
+				activePtr->setActive(connected);
+			if (timerPtr)
+				timerPtr->setRunning(connected);
+			if (statusDotPtr) {
+				const QString color =
+					hasError    ? QStringLiteral("#e56b6f")
+					: connected ? QStringLiteral("#35c98a")
+						    : (running ? QStringLiteral("#f0a23a") : QStringLiteral("#78808e"));
+				statusDotPtr->setStyleSheet(
+					QStringLiteral("background-color: %1; border-radius: 4px;").arg(color));
+			}
+			if (!running && !hasError) {
+				if (readiness && *readiness)
+					(*readiness)();
+			} else if (statusPtr &&
+				   !(!limitActionState->isEmpty() && message == QStringLiteral("Session ended."))) {
+				statusPtr->setText(message);
+			}
+			if (!running) {
+				const QString transcript = finalizeLocalTranscript();
+				if (autoSaveTranscriptToPixelion && !transcript.trimmed().isEmpty())
+					saveTranscriptToPixelion(auth, libraryNetwork,
+								 hasError ? QPointer<QLabel>() : statusPtr,
+								 transcriptSessionId, transcriptMode,
+								 transcriptSourceLanguage, transcriptTargetLanguage,
+								 transcriptSessionStartedAt, transcript,
+								 transcriptMetadataPath);
+			}
+			if (running && statusPtr)
+				statusPtr->setText(message);
+		},
+		[](const QString &text, bool final) { updateCaptionText(text, final); });
 
 	auto *appearanceHeading = new QLabel(QStringLiteral("Caption overlay"), content);
 	QFont headingFont = appearanceHeading->font();
 	headingFont.setBold(true);
 	appearanceHeading->setFont(headingFont);
 	layout->addWidget(appearanceHeading);
-	auto *placementHint = new QLabel(QStringLiteral("Add the caption area to your scene, then position and resize it in the preview."), content);
+	auto *placementHint = new QLabel(
+		QStringLiteral("Add the caption area to your scene, then position and resize it in the preview."),
+		content);
 	placementHint->setWordWrap(true);
 	placementHint->setObjectName(QStringLiteral("mutedText"));
 	layout->addWidget(placementHint);
@@ -2233,9 +2657,7 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	styleLayout->setContentsMargins(0, 0, 0, 0);
 	styleLayout->setHorizontalSpacing(10);
 	styleLayout->setVerticalSpacing(8);
-	styleToggle->setExpandedCallback([styleContents](bool expanded) {
-		styleContents->setVisible(expanded);
-	});
+	styleToggle->setExpandedCallback([styleContents](bool expanded) { styleContents->setVisible(expanded); });
 	styleLayout->setColumnStretch(0, 1);
 	styleLayout->setColumnStretch(1, 1);
 	auto *fontLabel = new QLabel(QStringLiteral("Font family"), styleContents);
@@ -2255,7 +2677,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	styleLayout->addWidget(new QLabel(QStringLiteral("Background color"), styleContents), 2, 1);
 	auto *textColor = makeColorControl(QStringLiteral("Text color"), ColorTarget::Text, styleContents);
 	styleLayout->addWidget(textColor, 3, 0);
-	auto *backgroundColor = makeColorControl(QStringLiteral("Background color"), ColorTarget::Background, styleContents);
+	auto *backgroundColor =
+		makeColorControl(QStringLiteral("Background color"), ColorTarget::Background, styleContents);
 	styleLayout->addWidget(backgroundColor, 3, 1);
 	auto *opacityLabel = new QLabel(QStringLiteral("Background opacity (%)"), styleContents);
 	opacityLabel->setWordWrap(true);
@@ -2284,8 +2707,10 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	auto *backgroundMode = new QComboBox(styleContents);
 	backgroundMode->addItems({QStringLiteral("Solid"), QStringLiteral("Transparent")});
 	backgroundMode->setCurrentIndex(static_cast<int>(currentStyle().backgroundMode));
-	QObject::connect(backgroundMode, qOverload<int>(&QComboBox::currentIndexChanged), root, &setCaptionBackgroundMode);
-	QObject::connect(backgroundMode, qOverload<int>(&QComboBox::currentIndexChanged), opacity, [opacity](int mode) { opacity->setEnabled(mode == 0); });
+	QObject::connect(backgroundMode, qOverload<int>(&QComboBox::currentIndexChanged), root,
+			 &setCaptionBackgroundMode);
+	QObject::connect(backgroundMode, qOverload<int>(&QComboBox::currentIndexChanged), opacity,
+			 [opacity](int mode) { opacity->setEnabled(mode == 0); });
 	styleLayout->addWidget(backgroundMode, 7, 1);
 	opacity->setEnabled(backgroundMode->currentIndex() == 0);
 	styleLayout->addWidget(new QLabel(QStringLiteral("Overlay padding (px)"), styleContents), 8, 0);
@@ -2297,11 +2722,13 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	QObject::connect(padding, qOverload<int>(&QSpinBox::valueChanged), root, &setCaptionPadding);
 	styleLayout->addWidget(padding, 9, 0);
 	auto *resetCaption = new QPushButton(QStringLiteral("Reset to default"), styleContents);
-	resetCaption->setToolTip(QStringLiteral("Restore the caption box and all caption style settings to their defaults."));
+	resetCaption->setToolTip(
+		QStringLiteral("Restore the caption box and all caption style settings to their defaults."));
 	styleLayout->addWidget(resetCaption, 10, 0, 1, 2);
 	layout->addWidget(styleContents);
 	QObject::connect(resetCaption, &QPushButton::clicked, root,
-			 [status, font, size, textColor, backgroundColor, opacity, alignment, visibleLines, backgroundMode, padding] {
+			 [status, font, size, textColor, backgroundColor, opacity, alignment, visibleLines,
+			  backgroundMode, padding] {
 				 resetCaptionStyle();
 				 const QSignalBlocker fontBlocker(font);
 				 const QSignalBlocker sizeBlocker(size);
@@ -2309,7 +2736,7 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 				 const QSignalBlocker alignmentBlocker(alignment);
 				 const QSignalBlocker linesBlocker(visibleLines);
 				 const QSignalBlocker modeBlocker(backgroundMode);
-					 const QSignalBlocker paddingBlocker(padding);
+				 const QSignalBlocker paddingBlocker(padding);
 				 font->setCurrentFont(QFont(QStringLiteral("Segoe UI")));
 				 size->setValue(32);
 				 styleButton(textColor, QColor(Qt::white));
@@ -2318,20 +2745,24 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 				 alignment->setCurrentIndex(1);
 				 visibleLines->setValue(2);
 				 backgroundMode->setCurrentIndex(0);
-					 padding->setValue(36);
+				 padding->setValue(36);
 				 opacity->setEnabled(true);
 				 const bool boxReset = resetCaptionArea(status);
 				 if (boxReset)
 					 status->setText(QStringLiteral("Caption box and style restored to defaults."));
 				 else
-					 status->setText(QStringLiteral("Caption style restored. %1").arg(status->text()));
+					 status->setText(
+						 QStringLiteral("Caption style restored. %1").arg(status->text()));
 			 });
 
-	auto *shortcutInfo = new QLabel(QStringLiteral("Shortcut: Not assigned. OBS hotkey support will be available with session controls."), content);
+	auto *shortcutInfo = new QLabel(
+		QStringLiteral("Shortcut: Not assigned. OBS hotkey support will be available with session controls."),
+		content);
 	shortcutInfo->setWordWrap(true);
 	shortcutInfo->setObjectName(QStringLiteral("mutedText"));
 	layout->addWidget(shortcutInfo);
-	auto *privacyLink = new QLabel(QStringLiteral("<a href=\"https://pixelion.ai/privacy\">Privacy policy</a>"), content);
+	auto *privacyLink =
+		new QLabel(QStringLiteral("<a href=\"https://pixelion.ai/privacy\">Privacy policy</a>"), content);
 	privacyLink->setOpenExternalLinks(true);
 	privacyLink->setTextInteractionFlags(Qt::LinksAccessibleByMouse | Qt::LinksAccessibleByKeyboard);
 	auto *footerLinks = new QHBoxLayout;
@@ -2364,13 +2795,18 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 
 void onFrontendEvent(enum obs_frontend_event event, void *)
 {
-	if (event == OBS_FRONTEND_EVENT_STREAMING_STARTED) streamingActive = true;
-	else if (event == OBS_FRONTEND_EVENT_STREAMING_STOPPED) streamingActive = false;
-	else if (event == OBS_FRONTEND_EVENT_RECORDING_STARTED) recordingActive = true;
-	else if (event == OBS_FRONTEND_EVENT_RECORDING_STOPPED) recordingActive = false;
+	if (event == OBS_FRONTEND_EVENT_STREAMING_STARTED)
+		streamingActive = true;
+	else if (event == OBS_FRONTEND_EVENT_STREAMING_STOPPED)
+		streamingActive = false;
+	else if (event == OBS_FRONTEND_EVENT_RECORDING_STARTED)
+		recordingActive = true;
+	else if (event == OBS_FRONTEND_EVENT_RECORDING_STOPPED)
+		recordingActive = false;
 	if (event == OBS_FRONTEND_EVENT_STREAMING_STARTED || event == OBS_FRONTEND_EVENT_STREAMING_STOPPED ||
 	    event == OBS_FRONTEND_EVENT_RECORDING_STARTED || event == OBS_FRONTEND_EVENT_RECORDING_STOPPED) {
-		if (autoStartHandler) autoStartHandler(streamingActive || recordingActive);
+		if (autoStartHandler)
+			autoStartHandler(streamingActive || recordingActive);
 	}
 	if (event == OBS_FRONTEND_EVENT_EXIT) {
 		obs_frontend_remove_event_callback(onFrontendEvent, nullptr);
@@ -2386,7 +2822,8 @@ bool obs_module_load(void)
 {
 	PixelionPlatform::registerBundledQtTlsBackend();
 	migrateLegacyPluginSettings();
-	PixelionDebugLog::write("INFO", QStringLiteral("Plugin loading; debug log: %1").arg(PixelionDebugLog::filePath()));
+	PixelionDebugLog::write("INFO",
+				QStringLiteral("Plugin loading; debug log: %1").arg(PixelionDebugLog::filePath()));
 	blog(LOG_INFO, "Pixelion Live Captions: debug log at %s", PixelionDebugLog::filePath().toUtf8().constData());
 	loadStyle();
 	loadTranscriptSettings();
@@ -2417,7 +2854,8 @@ bool obs_module_load(void)
 	recordingActive = obs_frontend_recording_active();
 	obs_frontend_add_event_callback(onFrontendEvent, nullptr);
 	authService->restore();
-	if (autoStartHandler) autoStartHandler(streamingActive || recordingActive);
+	if (autoStartHandler)
+		autoStartHandler(streamingActive || recordingActive);
 	blog(LOG_INFO, "Pixelion Live Captions %s loaded", PLUGIN_VERSION);
 	return true;
 }
