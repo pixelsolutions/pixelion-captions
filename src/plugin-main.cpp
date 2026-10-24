@@ -10,6 +10,7 @@
 #include "plugin-debug-log.h"
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <memory>
 #include <QColor>
@@ -90,16 +91,25 @@ QMutex styleMutex;
 QFont captionFont(QStringLiteral("Segoe UI"));
 QColor captionTextColor(Qt::white);
 QColor captionBackgroundColor(Qt::black);
-uint32_t captionFontSize = 32;
+uint32_t captionFontSize = 58;
 uint32_t captionBackgroundOpacity = 70;
 uint32_t captionTextAlignment = 1;
 uint32_t captionVisibleLines = 2;
 uint32_t captionBackgroundMode = 0;
 uint32_t captionPadding = 36;
+// Line spacing as a fraction of the font's natural line height. Values below
+// 1.0 tighten the gap between caption lines.
+double captionLineSpacing = 0.85;
 uint64_t styleRevision = 1;
 QString liveCaptionText;
 QString captionCommittedDisplayText;
 QString captionDraftDisplayText;
+// Caption visibility: during an active session the box mimics real captions.
+// It is only shown while text is arriving, plus a short linger after the last
+// text, and the "Your captions will appear here" placeholder is suppressed.
+bool captionSessionActive = false;
+qint64 captionLastTextMs = 0;
+constexpr qint64 kCaptionLingerMs = 2000;
 QString transcriptCommittedText;
 QString transcriptDraftText;
 QString transcriptFilePath;
@@ -1188,6 +1198,8 @@ void beginLocalTranscript()
 		liveCaptionText.clear();
 		captionCommittedDisplayText.clear();
 		captionDraftDisplayText.clear();
+		captionSessionActive = true;
+		captionLastTextMs = 0;
 		++styleRevision;
 	}
 	transcriptFilePath.clear();
@@ -1416,6 +1428,8 @@ void saveTranscriptToPixelion(PixelionAuthService *auth, QNetworkAccessManager *
 struct CaptionSource {
 	gs_texture_t *texture = nullptr;
 	uint64_t textureRevision = 0;
+	bool textureVisible = false;
+	QString textureText;
 };
 
 struct StyleSnapshot {
@@ -1428,24 +1442,21 @@ struct StyleSnapshot {
 	uint32_t visibleLines;
 	uint32_t backgroundMode;
 	uint32_t padding;
+	double lineSpacing;
 	QString captionText;
 	uint64_t revision;
+	bool sessionActive;
+	qint64 lastTextMs;
 };
 
 StyleSnapshot currentStyle()
 {
 	QMutexLocker lock(&styleMutex);
-	return {captionFont,
-		captionTextColor,
-		captionBackgroundColor,
-		captionFontSize,
-		captionBackgroundOpacity,
-		captionTextAlignment,
-		captionVisibleLines,
-		captionBackgroundMode,
-		captionPadding,
-		liveCaptionText,
-		styleRevision};
+	return {captionFont,          captionTextColor,         captionBackgroundColor,
+		captionFontSize,      captionBackgroundOpacity, captionTextAlignment,
+		captionVisibleLines,  captionBackgroundMode,    captionPadding,
+		captionLineSpacing,   liveCaptionText,          styleRevision,
+		captionSessionActive, captionLastTextMs};
 }
 
 QString visibleCaptionTail(const QString &text)
@@ -1514,6 +1525,16 @@ void updateCaptionText(const QString &text, bool final)
 	QString snapshot;
 	{
 		QMutexLocker lock(&styleMutex);
+		// If the caption box was hidden after a pause (its linger window
+		// expired with no new text), start the on-screen caption fresh so
+		// the incoming text replaces the old instead of continuing it. This
+		// only affects the displayed caption; the saved transcript keeps the
+		// full history.
+		if (!text.trimmed().isEmpty() && captionSessionActive && captionLastTextMs > 0 &&
+		    QDateTime::currentMSecsSinceEpoch() - captionLastTextMs > kCaptionLingerMs) {
+			captionCommittedDisplayText.clear();
+			captionDraftDisplayText.clear();
+		}
 		if (final) {
 			if (!text.trimmed().isEmpty()) {
 				if (!captionCommittedDisplayText.isEmpty())
@@ -1532,6 +1553,8 @@ void updateCaptionText(const QString &text, bool final)
 			transcriptDraftText += text;
 		}
 		rebuildCaptionDisplay();
+		if (!text.trimmed().isEmpty())
+			captionLastTextMs = QDateTime::currentMSecsSinceEpoch();
 		snapshot = transcriptCommittedText;
 		if (!transcriptDraftText.isEmpty()) {
 			if (!snapshot.isEmpty())
@@ -1716,12 +1739,13 @@ void resetCaptionStyle()
 		captionFont = QFont(QStringLiteral("Segoe UI"));
 		captionTextColor = QColor(Qt::white);
 		captionBackgroundColor = QColor(Qt::black);
-		captionFontSize = 32;
+		captionFontSize = 58;
 		captionBackgroundOpacity = 70;
 		captionTextAlignment = 1;
 		captionVisibleLines = 2;
 		captionBackgroundMode = 0;
 		captionPadding = 36;
+		captionLineSpacing = 0.85;
 		rebuildCaptionDisplay();
 		++styleRevision;
 	}
@@ -1800,47 +1824,83 @@ void captionSourceRender(void *data, gs_effect_t *effect)
 {
 	auto *source = static_cast<CaptionSource *>(data);
 	const auto style = currentStyle();
-	if (style.revision != source->textureRevision || !source->texture) {
+
+	// Decide what the box should show this frame. In preview (no active
+	// session) we show the placeholder when there is no caption text. During
+	// an active session we mimic real captions: show text only while it is
+	// arriving, keep it for a short linger after the last text, then hide the
+	// whole box (no background, no placeholder).
+	bool showBox = true;
+	QString effectiveText = style.captionText;
+	if (style.sessionActive) {
+		// Mimic real captions: the box is visible only while text is
+		// actively arriving, plus a short linger after the last text.
+		// Visibility is time-based and does not depend on whether the
+		// accumulated caption text is non-empty (it stays non-empty for
+		// the whole session). The placeholder is never shown while live.
+		const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+		showBox = style.lastTextMs > 0 && nowMs - style.lastTextMs <= kCaptionLingerMs;
+		if (!showBox)
+			effectiveText = QString();
+	} else {
+		effectiveText = style.captionText.isEmpty() ? QStringLiteral("Your captions will appear here")
+							    : style.captionText;
+	}
+
+	const bool needsRebuild = style.revision != source->textureRevision || !source->texture ||
+				  showBox != source->textureVisible || effectiveText != source->textureText;
+	if (needsRebuild) {
 		QImage canvas(static_cast<int>(kOverlayWidth), static_cast<int>(kOverlayHeight),
 			      QImage::Format_ARGB32_Premultiplied);
 		canvas.fill(Qt::transparent);
-		if (style.backgroundMode == 0) {
-			QColor background = style.backgroundColor;
-			background.setAlpha(static_cast<int>(style.backgroundOpacity * 255 / 100));
-			canvas.fill(background);
-		}
+		if (showBox) {
+			if (style.backgroundMode == 0) {
+				QColor background = style.backgroundColor;
+				background.setAlpha(static_cast<int>(style.backgroundOpacity * 255 / 100));
+				canvas.fill(background);
+			}
 
-		QPainter painter(&canvas);
-		painter.setRenderHint(QPainter::TextAntialiasing);
-		QFont font = style.font;
-		font.setPixelSize(static_cast<int>(style.fontSize));
-		painter.setFont(font);
-		painter.setPen(style.textColor);
-		const QFontMetrics metrics(font);
-		const int lineHeight = metrics.lineSpacing();
-		const int textHeight = std::min(static_cast<int>(kOverlayHeight) - 2 * static_cast<int>(style.padding),
-						lineHeight * static_cast<int>(style.visibleLines));
-		const QRect textRect(static_cast<int>(style.padding),
-				     (static_cast<int>(kOverlayHeight) - textHeight) / 2,
-				     static_cast<int>(kOverlayWidth) - 2 * static_cast<int>(style.padding), textHeight);
-		int alignment = static_cast<int>(Qt::AlignVCenter) | static_cast<int>(Qt::TextWordWrap);
-		if (style.textAlignment == 0)
-			alignment |= static_cast<int>(Qt::AlignLeft);
-		else if (style.textAlignment == 2)
-			alignment |= static_cast<int>(Qt::AlignRight);
-		else
-			alignment |= static_cast<int>(Qt::AlignHCenter);
-		const QString previewText = style.captionText.isEmpty()
-						    ? QStringLiteral("Your captions will appear here")
-						    : style.captionText;
-		painter.drawText(textRect, alignment, previewText);
-		painter.end();
+			QPainter painter(&canvas);
+			painter.setRenderHint(QPainter::TextAntialiasing);
+			QFont font = style.font;
+			font.setPixelSize(static_cast<int>(style.fontSize));
+			painter.setFont(font);
+			painter.setPen(style.textColor);
+			const QFontMetrics metrics(font);
+
+			// Draw each wrapped line manually so the vertical step can be
+			// tightened below the font's natural line spacing. effectiveText
+			// is already wrapped into newline-separated lines upstream.
+			const QStringList lines = effectiveText.split(QLatin1Char('\n'));
+			const int lineStep =
+				std::max(1, static_cast<int>(std::lround(metrics.height() * style.lineSpacing)));
+			const int blockHeight = metrics.ascent() + metrics.descent() +
+						lineStep * std::max(0, static_cast<int>(lines.size()) - 1);
+			const int left = static_cast<int>(style.padding);
+			const int width = static_cast<int>(kOverlayWidth) - 2 * static_cast<int>(style.padding);
+			int baseline = (static_cast<int>(kOverlayHeight) - blockHeight) / 2 + metrics.ascent();
+			int flags = static_cast<int>(Qt::TextSingleLine);
+			if (style.textAlignment == 0)
+				flags |= static_cast<int>(Qt::AlignLeft);
+			else if (style.textAlignment == 2)
+				flags |= static_cast<int>(Qt::AlignRight);
+			else
+				flags |= static_cast<int>(Qt::AlignHCenter);
+			for (const QString &line : lines) {
+				const QRect lineRect(left, baseline - metrics.ascent(), width, metrics.height());
+				painter.drawText(lineRect, flags, line);
+				baseline += lineStep;
+			}
+			painter.end();
+		}
 
 		if (source->texture)
 			gs_texture_destroy(source->texture);
 		const uint8_t *pixels = canvas.constBits();
 		source->texture = gs_texture_create(kOverlayWidth, kOverlayHeight, GS_BGRA, 1, &pixels, GS_DYNAMIC);
 		source->textureRevision = style.revision;
+		source->textureVisible = showBox;
+		source->textureText = effectiveText;
 	}
 
 	if (!source->texture)
@@ -2617,6 +2677,17 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 				statusPtr->setText(message);
 			}
 			if (!running) {
+				{
+					QMutexLocker lock(&styleMutex);
+					captionSessionActive = false;
+					captionLastTextMs = 0;
+					// Clear the on-screen caption so preview returns
+					// to the placeholder after the session ends.
+					liveCaptionText.clear();
+					captionCommittedDisplayText.clear();
+					captionDraftDisplayText.clear();
+					++styleRevision;
+				}
 				const QString transcript = finalizeLocalTranscript();
 				if (autoSaveTranscriptToPixelion && !transcript.trimmed().isEmpty())
 					saveTranscriptToPixelion(auth, libraryNetwork,
@@ -2738,7 +2809,7 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 				 const QSignalBlocker modeBlocker(backgroundMode);
 				 const QSignalBlocker paddingBlocker(padding);
 				 font->setCurrentFont(QFont(QStringLiteral("Segoe UI")));
-				 size->setValue(32);
+				 size->setValue(58);
 				 styleButton(textColor, QColor(Qt::white));
 				 styleButton(backgroundColor, QColor(Qt::black));
 				 opacity->setValue(70);
