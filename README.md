@@ -6,6 +6,12 @@ You can save transcripts on your computer, browse previous sessions, and optiona
 
 Pixelion Captions is a third-party plugin developed by Pixel Solutions. It is not part of OBS Studio and is not affiliated with or endorsed by the OBS Project.
 
+## Screenshots
+
+Captions shown live in a scene, over your webcam and content:
+
+![Captions shown live in an OBS scene](docs/screenshots/obs_6.jpg)
+
 ## Requirements
 
 You need Windows x64, OBS Studio, a free Pixelion.ai account, and an internet connection. Translation requires a Pixelion Pro plan. Available minutes and session limits depend on your subscription.
@@ -18,6 +24,8 @@ The plugin has been tested with OBS Studio 32.0.1 on Windows x64. It is built ag
 2. Download the Windows x64 ZIP from [Releases](https://github.com/pixelsolutions/pixelion-captions/releases). Choose the plugin package, rather than the source ZIP.
 3. Extract the ZIP and copy the `pixelion-captions` folder into `C:\ProgramData\obs-studio\plugins`. Keep its `bin` and `data` folders together.
 4. Open OBS Studio. Open the Docks menu and select Pixelion Captions.
+
+![Installing and opening Pixelion Captions in OBS](docs/screenshots/install-steps.gif)
 
 When updating, close OBS before replacing the plugin files. Keep your existing plugin settings and saved transcripts.
 
