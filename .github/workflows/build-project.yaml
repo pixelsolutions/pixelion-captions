@@ -136,6 +136,8 @@ jobs:
           installerIdentity: ${{ secrets.MACOS_SIGNING_INSTALLER_IDENTITY }}
           codesignCertificate: ${{ secrets.MACOS_SIGNING_CERT }}
           certificatePassword: ${{ secrets.MACOS_SIGNING_CERT_PASSWORD }}
+          installerCertificate: ${{ secrets.MACOS_SIGNING_INSTALLER_CERT }}
+          installerCertificatePassword: ${{ secrets.MACOS_SIGNING_INSTALLER_CERT_PASSWORD }}
           keychainPassword: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
           provisioningProfile: ${{ secrets.MACOS_SIGNING_PROVISIONING_PROFILE }}
           notarizationUser: ${{ secrets.MACOS_NOTARIZATION_USERNAME }}
