@@ -117,7 +117,7 @@ package() {
     typeset -gx CODESIGN_IDENT_INSTALLER="${CODESIGN_IDENT_INSTALLER:--}"
     typeset -gx CODESIGN_TEAM="$(print "${CODESIGN_IDENT}" | /usr/bin/sed -En 's/.+\((.+)\)/\1/p')"
 
-    if (( codesign )) {
+    if (( codesign )) && [[ ${CODESIGN_IDENT_INSTALLER} != '-' ]] {
       productsign \
         --sign "${CODESIGN_IDENT_INSTALLER}" \
         ${project_root}/release/${config}/${product_name}.pkg \

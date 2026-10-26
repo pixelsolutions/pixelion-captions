@@ -70,7 +70,8 @@ runs:
         : macOS Code Signing ✍️
         if (( ${+RUNNER_DEBUG} )) setopt XTRACE
 
-        if [[ ${MACOS_SIGNING_IDENTITY} && ${MACOS_SIGNING_IDENTITY_INSTALLER} && ${MACOS_SIGNING_CERT} ]] {
+        # The installer identity is optional (only needed to sign a .pkg).
+        if [[ ${MACOS_SIGNING_IDENTITY} && ${MACOS_SIGNING_CERT} ]] {
           print 'haveCodesignIdent=true' >> $GITHUB_OUTPUT
 
           local -r certificate_path="${RUNNER_TEMP}/build_certificate.p12"
