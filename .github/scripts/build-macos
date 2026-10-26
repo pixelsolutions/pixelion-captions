@@ -118,10 +118,15 @@ build() {
     if (( debug )) {
       xcodebuild ${@}
     } else {
-      if [[ ${GITHUB_EVENT_NAME} == push ]] {
-        xcodebuild ${@} 2>&1 | xcbeautify --renderer terminal
-      } else {
-        xcodebuild ${@} 2>&1 | xcbeautify --renderer github-actions
+      local raw_log="${TMPDIR:-/tmp}/xcodebuild-raw.log"
+      local renderer='github-actions'
+      [[ ${GITHUB_EVENT_NAME} == push ]] && renderer='terminal'
+      local build_status=0
+      xcodebuild ${@} 2>&1 | tee "${raw_log}" | xcbeautify --renderer ${renderer} || build_status=${pipestatus[1]}
+      if (( build_status )) {
+        print -u2 "xcodebuild failed (exit ${build_status}). Last 150 lines of raw output:"
+        tail -n 150 "${raw_log}" >&2
+        return ${build_status}
       }
     }
   }
