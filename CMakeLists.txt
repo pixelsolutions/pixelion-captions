@@ -125,6 +125,14 @@ elseif(APPLE)
         endif()
     endforeach()
     if(PIXELION_QT_TLS_BACKEND)
+        # A nested dylib must be signed with the bundle's identity or bundle
+        # signing fails. Developer ID builds also need hardened runtime and a
+        # secure timestamp (notarization); ad-hoc ("-") builds use neither.
+        if(CODESIGN_IDENTITY AND NOT CODESIGN_IDENTITY STREQUAL "-")
+            set(PIXELION_TLS_SIGN_ARGS --options runtime --timestamp)
+        else()
+            set(PIXELION_TLS_SIGN_ARGS --timestamp=none)
+        endif()
         get_filename_component(
             PIXELION_QT_TLS_BACKEND_NAME
             "${PIXELION_QT_TLS_BACKEND}"
@@ -139,6 +147,10 @@ elseif(APPLE)
             COMMAND
                 ${CMAKE_COMMAND} -E copy_if_different
                 "${PIXELION_QT_TLS_BACKEND}"
+                "$<TARGET_BUNDLE_CONTENT_DIR:${CMAKE_PROJECT_NAME}>/MacOS/tls/${PIXELION_QT_TLS_BACKEND_NAME}"
+            COMMAND
+                codesign --force --sign "$<IF:$<BOOL:${CODESIGN_IDENTITY}>,${CODESIGN_IDENTITY},->"
+                ${PIXELION_TLS_SIGN_ARGS}
                 "$<TARGET_BUNDLE_CONTENT_DIR:${CMAKE_PROJECT_NAME}>/MacOS/tls/${PIXELION_QT_TLS_BACKEND_NAME}"
             VERBATIM
         )
