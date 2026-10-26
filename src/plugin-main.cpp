@@ -6,7 +6,7 @@
 #include "auth-service.h"
 #include "feedback-dialog.h"
 #include "live-session.h"
-#include "platform/windows/tls-backend.h"
+#include "platform/tls-backend.h"
 #include "plugin-debug-log.h"
 
 #include <algorithm>

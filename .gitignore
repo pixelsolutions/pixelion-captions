@@ -9,6 +9,7 @@
 !/docs
 !/src
 !/resources
+!/tests
 !.clang-format
 !.gitignore
 !buildspec.json

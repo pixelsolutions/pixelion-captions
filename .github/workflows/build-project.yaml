@@ -73,9 +73,6 @@ jobs:
 
   macos-build:
     name: Build for macOS 🍏
-    # Keep the OBS template job as a reference, but skip it until the native
-    # macOS implementation is ready.
-    if: false
     runs-on: macos-15
     needs: check-event
     defaults:

@@ -9,6 +9,11 @@ project(${_name} VERSION ${_version})
 
 option(ENABLE_FRONTEND_API "Use obs-frontend-api for UI functionality" ON)
 option(ENABLE_QT "Use Qt functionality" ON)
+option(
+    PIXELION_BUILD_TESTS
+    "Build the host-runnable pure-logic test target"
+    OFF
+)
 
 include(compilerconfig)
 include(defaults)
@@ -78,10 +83,77 @@ if(WIN32)
             src/platform/windows/tls-backend.cpp
     )
     target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Advapi32 Winhttp)
+elseif(APPLE)
+    find_package(Qt6 REQUIRED COMPONENTS WebSockets)
+    target_sources(
+        ${CMAKE_PROJECT_NAME}
+        PRIVATE
+            src/platform/macos/tls-backend.mm
+            src/platform/macos/auth-service.mm
+            src/platform/macos/live-session.mm
+    )
+    target_link_libraries(
+        ${CMAKE_PROJECT_NAME}
+        PRIVATE
+            Qt6::WebSockets
+            "-framework Security"
+            "-framework Foundation"
+            "-framework CoreFoundation"
+    )
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "13.7")
+    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+
+    # OBS bundles Qt6 but omits the Qt TLS backend plugins. Ship Qt's macOS TLS
+    # backend dylib inside this plugin's bundle (beside the binary, in a "tls"
+    # subdirectory) so QNetworkAccessManager (HTTPS) and QWebSocket (WSS) have a
+    # working TLS backend with no user-installed dependency. registerBundled-
+    # QtTlsBackend() in src/platform/macos/tls-backend.mm resolves the binary via
+    # dladdr and registers this directory on Qt's library path when it exists.
+    get_filename_component(PIXELION_QT_ROOT "${Qt6_DIR}/../../.." ABSOLUTE)
+    set(PIXELION_QT_TLS_BACKEND "")
+    foreach(
+        _pixelion_tls_candidate
+        "libqsecuretransportbackend.dylib"
+        "libqopensslbackend.dylib"
+    )
+        if(
+            NOT PIXELION_QT_TLS_BACKEND
+            AND EXISTS "${PIXELION_QT_ROOT}/plugins/tls/${_pixelion_tls_candidate}"
+        )
+            set(PIXELION_QT_TLS_BACKEND
+                "${PIXELION_QT_ROOT}/plugins/tls/${_pixelion_tls_candidate}"
+            )
+        endif()
+    endforeach()
+    if(PIXELION_QT_TLS_BACKEND)
+        get_filename_component(
+            PIXELION_QT_TLS_BACKEND_NAME
+            "${PIXELION_QT_TLS_BACKEND}"
+            NAME
+        )
+        add_custom_command(
+            TARGET ${CMAKE_PROJECT_NAME}
+            POST_BUILD
+            COMMAND
+                ${CMAKE_COMMAND} -E make_directory
+                "$<TARGET_BUNDLE_CONTENT_DIR:${CMAKE_PROJECT_NAME}>/MacOS/tls"
+            COMMAND
+                ${CMAKE_COMMAND} -E copy_if_different
+                "${PIXELION_QT_TLS_BACKEND}"
+                "$<TARGET_BUNDLE_CONTENT_DIR:${CMAKE_PROJECT_NAME}>/MacOS/tls/${PIXELION_QT_TLS_BACKEND_NAME}"
+            VERBATIM
+        )
+    else()
+        message(
+            WARNING
+            "Qt macOS TLS backend dylib not found under ${PIXELION_QT_ROOT}/plugins/tls; "
+            "HTTPS/WSS may fail at runtime. Confirm the obs-deps Qt6 TLS backend (Task 2.1)."
+        )
+    endif()
 else()
     message(
         FATAL_ERROR
-        "Pixelion Captions currently has a Windows x64 implementation. macOS platform support is planned but is not available yet."
+        "Pixelion Captions supports Windows x64 and macOS (arm64/x86_64) only. The current target platform is not supported."
     )
 endif()
 
@@ -115,3 +187,9 @@ set_target_properties_plugin(
     ${CMAKE_PROJECT_NAME}
     PROPERTIES OUTPUT_NAME ${_name}
 )
+
+# Host-runnable pure-logic tests (Task 8). Opt-in; standalone subproject that
+# links no OBS/Qt, so it does not affect the plugin build or packaging.
+if(PIXELION_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
