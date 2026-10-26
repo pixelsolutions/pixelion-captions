@@ -73,6 +73,10 @@ Source: "{#SourceDir}\data\*"; DestDir: "{app}\data\obs-plugins\{#PluginName}"; 
 ; user data and is intentionally never touched, including on uninstall.
 
 [Code]
+// Default install dir: OBS Studio's HKLM\SOFTWARE\OBS Studio default value,
+// read from the 64-bit registry view first and the 32-bit (WOW6432Node) view
+// second. Falls back to commonpf64\obs-studio. The user can change it on the
+// Select Destination Location page.
 function GetObsDir(Param: String): String;
 var
   Dir: String;
@@ -81,8 +85,6 @@ begin
   if RegQueryStringValue(HKLM64, 'SOFTWARE\OBS Studio', '', Dir) and (Dir <> '') then
     Result := Dir
   else if RegQueryStringValue(HKLM32, 'SOFTWARE\OBS Studio', '', Dir) and (Dir <> '') then
-    Result := Dir
-  else if RegQueryStringValue(HKLM, 'SOFTWARE\WOW6432Node\OBS Studio', '', Dir) and (Dir <> '') then
     Result := Dir;
   if Result = '' then
     Result := ExpandConstant('{commonpf64}\obs-studio');
@@ -121,17 +123,29 @@ begin
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
+var
+  ObsDir: String;
 begin
   Result := True;
   if CurPageID = wpSelectDir then
   begin
-    if not FileExists(AddBackslash(WizardDirValue) + 'bin\64bit\obs64.exe') then
-      Result := MsgBox('obs64.exe was not found in:' + #13#10 + WizardDirValue + #13#10#13#10 +
+    ObsDir := WizardForm.DirEdit.Text;
+    if not FileExists(AddBackslash(ObsDir) + 'bin\64bit\obs64.exe') then
+      Result := MsgBox('obs64.exe was not found in:' + #13#10 + ObsDir + #13#10#13#10 +
                        'This does not look like an OBS Studio installation. Install here anyway?',
                        mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
     if Result then
       Result := EnsureObsClosed();
   end;
+end;
+
+{ OBS may have been started while the wizard was open. Re-check right before
+  files are copied, because the copy would otherwise fail on the locked DLL. }
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if not EnsureObsClosed() then
+    Result := 'Installation cancelled because OBS Studio is still running.';
 end;
 
 function InitializeUninstall(): Boolean;

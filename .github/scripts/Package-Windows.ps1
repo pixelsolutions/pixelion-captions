@@ -53,6 +53,7 @@ function Package {
         ErrorAction = 'SilentlyContinue'
         Path = @(
             "${ProjectRoot}/release/${ProductName}-*-windows-*.zip"
+            "${ProjectRoot}/release/${ProductName}-*-windows-*.exe"
         )
     }
 
@@ -71,7 +72,6 @@ function Package {
     # Build the Inno Setup installer next to the zip.
     $InstallerName = "${OutputName}-installer"
     $InstallerPath = "${ProjectRoot}/release/${InstallerName}.exe"
-    Remove-Item -ErrorAction SilentlyContinue -Path $InstallerPath
 
     Log-Group "Building installer for ${ProductName}..."
 
@@ -109,12 +109,12 @@ function Package {
     if ( $LASTEXITCODE -ne 0 ) { throw "iscc failed (${LASTEXITCODE})" }
     if ( ! ( Test-Path $InstallerPath ) ) { throw "Installer not produced: ${InstallerPath}" }
 
-    # Extension point for Authenticode signing. Intentionally not implemented:
-    # when WINDOWS_SIGN_* secrets are configured, sign $InstallerPath here
-    # (e.g. signtool sign /f <pfx> /p <password> /fd SHA256 /tr <timestamp-url> /td SHA256 $InstallerPath).
-    # With the variables absent, signing is skipped silently.
+    # Authenticode signing extension point. Signing is NOT implemented.
+    # It is skipped when WINDOWS_SIGN_CERT and WINDOWS_SIGN_PASSWORD are absent,
+    # which is the current state. To enable it, add a signtool call here, e.g.
+    #   signtool sign /f <pfx> /p <password> /fd SHA256 /tr <timestamp-url> /td SHA256 $InstallerPath
     if ( $Env:WINDOWS_SIGN_CERT -and $Env:WINDOWS_SIGN_PASSWORD ) {
-        # TODO: add signtool invocation.
+        Log-Warning "WINDOWS_SIGN_* is set, but Authenticode signing is not implemented. ${InstallerName}.exe is UNSIGNED."
     }
     Log-Group
 }
