@@ -27,6 +27,7 @@ jobs:
         id: setup
         env:
           GH_TOKEN: ${{ github.token }}
+          DISPATCH_NOTARIZE: ${{ github.event.inputs.notarize }}
         run: |
           : Check Event Data ☑️
           if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
@@ -49,6 +50,9 @@ jobs:
               ;;
             workflow_dispatch)
               config_data=('codesign:true' 'notarize:false' 'package:true' 'config:RelWithDebInfo')
+              if [[ "${DISPATCH_NOTARIZE}" == 'true' ]]; then
+                config_data[1]='notarize:true'
+              fi
               ;;
             schedule)
               config_data=('codesign:true' 'notarize:false' 'package:true' 'config:RelWithDebInfo')

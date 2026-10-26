@@ -9,6 +9,11 @@ on:
         type: choice
         options:
           - build
+      notarize:
+        description: Notarize the macOS package (needs Apple notarization secrets)
+        required: false
+        type: boolean
+        default: false
 permissions:
   contents: write
 jobs:
