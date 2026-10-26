@@ -1,3 +1,5 @@
+#import <Foundation/Foundation.h>
+
 #include "live-session.h"
 #include "auth-service.h"
 #include "plugin-debug-log.h"
@@ -16,12 +18,13 @@
 #include <QTimer>
 #include <QUrl>
 #include <QUuid>
-#include <QWebSocket>
 
 #include <array>
 #include <algorithm>
 #include <atomic>
 #include <cstring>
+#include <functional>
+#include <memory>
 #include <mutex>
 
 // macOS adapter for PixelionLiveSession.
@@ -43,9 +46,11 @@
 //
 //   Native:
 //     * Task 4.3 (implemented) - the WSS transport. Windows uses a WinHTTP
-//                  WebSocket; macOS uses QWebSocket (Qt6::WebSockets) to
-//                  wss://api.openai.com. The worker_ thread runs a QEventLoop
-//                  that services the QWebSocket; a QTimer drains the AudioQueue
+//                  WebSocket; macOS uses a native NSURLSessionWebSocketTask
+//                  (the design's fallback: obs-deps Qt6 ships no
+//                  Qt6::WebSockets) to wss://api.openai.com. The worker_
+//                  thread runs a QEventLoop that receives the task's events
+//                  (posted from NSURLSession's delegate queue); a QTimer drains the AudioQueue
 //                  and sends input_audio_buffer.append frames, and inbound text
 //                  frames are fed to the ported parseProviderMessage(). The
 //                  session.update config, append event shape, and Bearer auth
@@ -67,11 +72,128 @@
 #define PIXELION_API_BASE_URL "https://9yw5ciothk.execute-api.us-east-1.amazonaws.com/prod"
 #endif
 
+// --- NSURLSessionWebSocketTask bridge (Task 4.3) ---------------------------
+//
+// NSURLSession delivers delegate callbacks and completion handlers on its own
+// serial delegate queue. PixelionWssBridge hands each event to the worker
+// thread by posting it to `context`, a QObject that lives on the worker thread,
+// so all session state is only touched from the worker's QEventLoop (the same
+// threading model the QWebSocket version had). Once the worker detaches
+// (context = nullptr), late NSURLSession callbacks are dropped.
+struct PixelionWssBridge : std::enable_shared_from_this<PixelionWssBridge> {
+    std::mutex mutex;
+    QObject *context = nullptr;
+    std::atomic<bool> receiving {true};
+    std::function<void()> onOpen;
+    std::function<void(const QString &)> onText;
+    std::function<void(const QString &)> onError;
+    std::function<void()> onClosed;
+
+    void post(std::function<void()> event)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (context)
+            QMetaObject::invokeMethod(context, std::move(event), Qt::QueuedConnection);
+    }
+
+    void postOpen()
+    {
+        post([self = shared_from_this()] {
+            if (self->onOpen)
+                self->onOpen();
+        });
+    }
+
+    void postClosed()
+    {
+        post([self = shared_from_this()] {
+            if (self->onClosed)
+                self->onClosed();
+        });
+    }
+
+    void postText(const QString &text)
+    {
+        post([self = shared_from_this(), text] {
+            if (self->onText)
+                self->onText(text);
+        });
+    }
+
+    void postError(const QString &text)
+    {
+        post([self = shared_from_this(), text] {
+            if (self->onError)
+                self->onError(text);
+        });
+    }
+
+    void detach()
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        context = nullptr;
+        receiving = false;
+    }
+};
+
+@interface PixelionCaptionsWssDelegate : NSObject <NSURLSessionWebSocketDelegate>
+- (instancetype)initWithBridge:(std::shared_ptr<PixelionWssBridge>)bridge;
+@end
+
+@implementation PixelionCaptionsWssDelegate {
+    std::shared_ptr<PixelionWssBridge> _bridge;
+}
+
+- (instancetype)initWithBridge:(std::shared_ptr<PixelionWssBridge>)bridge
+{
+    self = [super init];
+    if (self)
+        _bridge = std::move(bridge);
+    return self;
+}
+
+- (void)URLSession:(NSURLSession *)session
+          webSocketTask:(NSURLSessionWebSocketTask *)webSocketTask
+    didOpenWithProtocol:(NSString *)protocol
+{
+    (void) session;
+    (void) webSocketTask;
+    (void) protocol;
+    _bridge->postOpen();
+}
+
+- (void)URLSession:(NSURLSession *)session
+       webSocketTask:(NSURLSessionWebSocketTask *)webSocketTask
+    didCloseWithCode:(NSURLSessionWebSocketCloseCode)closeCode
+              reason:(NSData *)reason
+{
+    (void) session;
+    (void) webSocketTask;
+    (void) closeCode;
+    (void) reason;
+    _bridge->postClosed();
+}
+
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error
+{
+    (void) session;
+    (void) task;
+    // A failed upgrade / network drop completes the task with an error (the
+    // QWebSocket errorOccurred analog); a completion without error after the
+    // close handshake is the disconnected analog.
+    if (error != nil)
+        _bridge->postError(QString::fromNSString(error.localizedDescription));
+    else
+        _bridge->postClosed();
+}
+
+@end
+
 namespace {
     // GA transcription sessions use intent=transcription; the model is bound to the
     // ephemeral client secret created by Pixelion's token service. Paths kept as
-    // QString here (vs. the Windows wide-string literals) for the Qt-native
-    // QWebSocket transport that Task 4.3 will build against wss://api.openai.com.
+    // narrow strings here (vs. the Windows wide-string literals) for the native
+    // NSURLSessionWebSocketTask transport (Task 4.3) to wss://api.openai.com.
     constexpr char kOpenAiWssBase[] = "wss://api.openai.com";
     constexpr char kTranscribePath[] = "/v1/realtime?intent=transcription";
     constexpr char kTranslatePath[] = "/v1/realtime/translations?model=gpt-realtime-translate";
@@ -125,7 +247,7 @@ namespace {
 
     // --- Shared transport helpers ---------------------------------------------
     //
-    // Ported verbatim from the Windows adapter so the Task 4.3 QWebSocket transport
+    // Ported verbatim from the Windows adapter so the Task 4.3 WSS transport
     // base64-encodes audio frames and parses provider messages identically to
     // Windows (caption deltas/finals and error handling match; see Task 8.6).
     QString base64(const uint8_t *data, size_t size)
@@ -135,17 +257,47 @@ namespace {
     }
 
     // Serialize + send one JSON event as a WebSocket text frame. Mirrors the
-    // Windows adapter's sendJson(): compact JSON, UTF-8 text message. QWebSocket
-    // buffers the frame internally and reports write failures via its error
-    // signal, so this returns whether the socket was in a connected/valid state at
-    // send time (the receive/error signals drive the actual failure path).
-    bool sendJson(QWebSocket &socket, const QJsonObject &message)
+    // Windows adapter's sendJson(): compact JSON, UTF-8 text message. The task
+    // queues the frame and reports write failures through the completion
+    // handler, which is routed to the bridge's error handler; this returns
+    // whether the socket was connected at send time.
+    bool sendJson(NSURLSessionWebSocketTask *task, bool connected, const std::shared_ptr<PixelionWssBridge> &bridge,
+                  const QJsonObject &message)
     {
-        if (socket.state() != QAbstractSocket::ConnectedState)
+        if (task == nil || !connected)
             return false;
         const QByteArray json = QJsonDocument(message).toJson(QJsonDocument::Compact);
-        socket.sendTextMessage(QString::fromUtf8(json));
+        @autoreleasepool {
+            NSString *text = [[NSString alloc] initWithBytes:json.constData()
+                                                      length:static_cast<NSUInteger>(json.size())
+                                                    encoding:NSUTF8StringEncoding];
+            if (text == nil)
+                return false;
+            NSURLSessionWebSocketMessage *frame = [[NSURLSessionWebSocketMessage alloc] initWithString:text];
+            const std::shared_ptr<PixelionWssBridge> errorBridge = bridge;
+            [task sendMessage:frame completionHandler:^(NSError *error) {
+                if (error != nil)
+                    errorBridge->postError(QString::fromNSString(error.localizedDescription));
+            }];
+        }
         return true;
+    }
+
+    // Keep exactly one receive outstanding; re-arm after each frame until the
+    // task fails/closes or the worker detaches. Text frames go to onText.
+    void receiveNext(NSURLSessionWebSocketTask *task, const std::shared_ptr<PixelionWssBridge> &bridge)
+    {
+        const std::shared_ptr<PixelionWssBridge> receiveBridge = bridge;
+        __weak NSURLSessionWebSocketTask *weakTask = task;
+        [task receiveMessageWithCompletionHandler:^(NSURLSessionWebSocketMessage *message, NSError *error) {
+            if (error != nil || message == nil || !receiveBridge->receiving)
+                return;
+            if (message.type == NSURLSessionWebSocketMessageTypeString)
+                receiveBridge->postText(QString::fromNSString(message.string));
+            NSURLSessionWebSocketTask *strongTask = weakTask;
+            if (strongTask != nil)
+                receiveNext(strongTask, receiveBridge);
+        }];
     }
 
     void parseProviderMessage(const QByteArray &message, const QString &mode,
@@ -396,7 +548,7 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
     PixelionDebugLog::write("INFO", QStringLiteral("Opening realtime WebSocket for %1 session").arg(mode));
 
     // Marshal provider callbacks back onto the object's thread, matching the
-    // Windows adapter. Task 4.3's QWebSocket transport uses these when wiring
+    // Windows adapter. Task 4.3's WSS transport uses these when wiring
     // parseProviderMessage.
     const auto rawStateCb = stateCallback_;
     const auto rawCaptionCb = captionCallback_;
@@ -416,13 +568,13 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
     };
 
     // ===================================================================
-    // Task 4.3: QWebSocket (Qt6::WebSockets) WSS transport.
+    // Task 4.3: NSURLSessionWebSocketTask WSS transport.
     // -------------------------------------------------------------------
     // Mirrors the Windows WinHTTP WebSocket worker (src/platform/windows/
     // live-session.cpp). The Windows adapter ran a dedicated std::thread with
-    // a blocking send loop plus a receive thread; QWebSocket is signal-driven
-    // and requires an event loop, so the worker_ thread runs a QEventLoop and
-    // the QWebSocket lives on and is serviced by that thread. A QTimer on the
+    // a blocking send loop plus a receive thread; here the worker_ thread runs
+    // a QEventLoop and every NSURLSession event (open, text frame, error,
+    // close) is posted onto it through PixelionWssBridge. A QTimer on the
     // same thread drains the AudioQueue and sends input_audio_buffer.append
     // frames, replacing the Windows poll/Sleep(10) send loop; inbound text
     // frames are fed to the ported parseProviderMessage() exactly as Windows
@@ -438,7 +590,27 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
                            stateCb, captionCb]() mutable {
         (void) sessionId;
         QEventLoop loop;
-        QWebSocket socket(QString(), QWebSocketProtocol::VersionLatest);
+        // Lives on this thread: receiver for events posted by the bridge and
+        // context object for the drain/fallback timers.
+        QObject context;
+        const auto bridge = std::make_shared<PixelionWssBridge>();
+        bridge->context = &context;
+        NSURLSession *session = nil;
+        NSURLSessionWebSocketTask *task = nil;
+        bool connected = false;
+        // Idempotent transport shutdown (QWebSocket::abort analog). Detaching
+        // first drops any NSURLSession callback that is still in flight;
+        // invalidateAndCancel releases the session's strong delegate reference.
+        auto closeTransport = [&]() {
+            connected = false;
+            bridge->detach();
+            @autoreleasepool {
+                [task cancel];
+                [session invalidateAndCancel];
+            }
+            task = nil;
+            session = nil;
+        };
 
         // Shared teardown, mirroring the Windows worker's tail. Runs exactly
         // once; `audioAdded` tracks whether the OBS callback was registered so
@@ -457,9 +629,7 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
             if (teardownDone)
                 return;
             teardownDone = true;
-            if (socket.state() != QAbstractSocket::UnconnectedState) {
-                socket.abort();
-            }
+            closeTransport();
             if (audioAdded) {
                 obs_remove_raw_audio_callback(0, audioCallback, audio);
                 audioAdded = false;
@@ -519,8 +689,7 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
                 std::lock_guard<std::mutex> lock(audio->mutex);
                 audio->closed = true;
             }
-            if (socket.state() != QAbstractSocket::UnconnectedState)
-                socket.abort();
+            closeTransport();
             delete audio;
             teardownDone = true;
             running_ = false;
@@ -537,7 +706,8 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
         };
 
         // --- connected: send session.update, register OBS audio, start drain
-        QObject::connect(&socket, &QWebSocket::connected, &socket, [&]() {
+        bridge->onOpen = [&]() {
+            connected = true;
             PixelionDebugLog::write("INFO", QStringLiteral("Realtime WebSocket connected"));
             QJsonObject sessionConfig;
             if (mode == QStringLiteral("translate")) {
@@ -574,7 +744,7 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
                      {QStringLiteral("turn_detection"), QJsonValue::Null}}}}}}}
                 };
             }
-            if (!sendJson(socket, sessionConfig)) {
+            if (!sendJson(task, connected, bridge, sessionConfig)) {
                 connectFailure(QStringLiteral("Could not start live captions because the connection was "
                                               "interrupted. Check your internet connection, then try Start "
                                               "again."),
@@ -583,10 +753,10 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
             }
             obs_add_raw_audio_callback(0, &conversion, audioCallback, audio);
             audioAdded = true;
-        });
+        };
 
         // --- inbound text frames -> parseProviderMessage (identical to Windows)
-        QObject::connect(&socket, &QWebSocket::textMessageReceived, &socket, [&](const QString &message) {
+        bridge->onText = [&](const QString &message) {
             const QByteArray payload = message.toUtf8();
             parseProviderMessage(payload, mode, captionCb, stateCb, &gracefulDone, &providerError, &providerErrorMutex,
                                  &providerFailed);
@@ -594,20 +764,20 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
                 failed = true;
                 teardown(QString());
             }
-        });
+        };
 
         // --- transport error -> connect/unexpected-close failure path
-        QObject::connect(&socket, &QWebSocket::errorOccurred, &socket, [&](QAbstractSocket::SocketError) {
+        bridge->onError = [&](const QString &errorText) {
             if (teardownDone)
                 return;
             connectFailure(QStringLiteral("Could not connect to live captions. Check your internet "
                                           "connection, then try Start again. Live transcription and "
                                           "translation require internet access."),
-                           QStringLiteral("Realtime WebSocket error: %1").arg(socket.errorString()));
-        });
+                           QStringLiteral("Realtime WebSocket error: %1").arg(errorText));
+        };
 
         // --- unexpected close mid-session -> failure; graceful close -> clean
-        QObject::connect(&socket, &QWebSocket::disconnected, &socket, [&]() {
+        bridge->onClosed = [&]() {
             if (teardownDone)
                 return;
             if (gracefulDone || stopRequested_) {
@@ -616,13 +786,13 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
                 failed = true;
                 teardown(QStringLiteral("Realtime WebSocket closed unexpectedly"));
             }
-        });
+        };
 
         // --- audio drain timer (replaces the Windows poll/Sleep(10) loop) ---
         std::array<uint8_t, AudioQueue::kBytesPerSlot> audioBuffer {};
         QTimer drainTimer;
         drainTimer.setInterval(10);
-        QObject::connect(&drainTimer, &QTimer::timeout, &socket, [&]() {
+        QObject::connect(&drainTimer, &QTimer::timeout, &context, [&]() {
             if (teardownDone)
                 return;
             if (stopRequested_ || providerFailed) {
@@ -631,20 +801,22 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
                 // provider's completion/close drive teardown. A short grace
                 // period is enforced by the fallback timer below.
                 drainTimer.stop();
-                if (socket.state() == QAbstractSocket::ConnectedState) {
+                if (connected) {
                     if (mode == QStringLiteral("transcribe"))
-                        sendJson(socket, QJsonObject {
-                                             {QStringLiteral("type"), QStringLiteral("input_audio_buffer.commit")}
+                        sendJson(task, connected, bridge,
+                                 QJsonObject {
+                                     {QStringLiteral("type"), QStringLiteral("input_audio_buffer.commit")}
                         });
                     else
-                        sendJson(socket, QJsonObject {
-                                             {QStringLiteral("type"), QStringLiteral("session.close")}
+                        sendJson(task, connected, bridge,
+                                 QJsonObject {
+                                     {QStringLiteral("type"), QStringLiteral("session.close")}
                         });
                 }
                 // Task 4.4: match the Windows worker's 2.5 s drain window.
                 // A single-shot fallback guarantees teardown even if no
                 // graceful close/completion arrives within the window.
-                QTimer::singleShot(2500, &socket, [&]() {
+                QTimer::singleShot(2500, &context, [&]() {
                     if (!teardownDone) {
                         if (!gracefulDone && !stopRequested_)
                             failed = true;
@@ -658,9 +830,10 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
                 const QString eventType = mode == QStringLiteral("translate")
                                               ? QStringLiteral("session.input_audio_buffer.append")
                                               : QStringLiteral("input_audio_buffer.append");
-                if (!sendJson(socket, QJsonObject {
-                                          {QStringLiteral("type"), eventType},
-                                          {QStringLiteral("audio"), base64(audioBuffer.data(), audioSize)}
+                if (!sendJson(task, connected, bridge,
+                              QJsonObject {
+                                  {QStringLiteral("type"), eventType},
+                                  {QStringLiteral("audio"), base64(audioBuffer.data(), audioSize)}
                 })) {
                     connectFailure(QStringLiteral("Live captions stopped because the connection was "
                                                   "interrupted. Check your internet connection, then try "
@@ -681,11 +854,25 @@ void PixelionLiveSession::beginWorker(const QString &mode, const QString &source
         // The client secret is held in memory only; never written to disk.
         const QString path = mode == QStringLiteral("translate") ? QString::fromLatin1(kTranslatePath)
                                                                  : QString::fromLatin1(kTranscribePath);
-        QNetworkRequest request(QUrl(QString::fromLatin1(kOpenAiWssBase) + path));
-        request.setRawHeader("Authorization", QByteArray("Bearer ") + clientSecret.toUtf8());
-        socket.open(request);
+        const QString url = QString::fromLatin1(kOpenAiWssBase) + path;
+        const QByteArray authorization = QByteArray("Bearer ") + clientSecret.toUtf8();
+        @autoreleasepool {
+            NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:url.toNSString()]];
+            [request setValue:[[NSString alloc] initWithBytes:authorization.constData()
+                                                       length:static_cast<NSUInteger>(authorization.size())
+                                                     encoding:NSUTF8StringEncoding]
+                forHTTPHeaderField:@"Authorization"];
+            PixelionCaptionsWssDelegate *delegate = [[PixelionCaptionsWssDelegate alloc] initWithBridge:bridge];
+            session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]
+                                                    delegate:delegate
+                                               delegateQueue:nil];
+            task = [session webSocketTaskWithRequest:request];
+            [task resume];
+            receiveNext(task, bridge);
+        }
 
         loop.exec();
+        closeTransport();
     });
 }
 

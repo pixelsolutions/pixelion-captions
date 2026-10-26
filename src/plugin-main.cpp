@@ -721,7 +721,7 @@ bool exportTranscriptFile(const QFileInfo &source, const QString &format, QWidge
 		if (extension == QStringLiteral("vtt"))
 			output = QStringLiteral("WEBVTT\n\n");
 		int cueNumber = 0;
-		for (const auto &value : cues) {
+		for (const auto value : cues) {
 			const QJsonObject cue = value.toObject();
 			const qint64 startMs = static_cast<qint64>(cue.value(QStringLiteral("start_ms")).toDouble());
 			const qint64 endMs = static_cast<qint64>(cue.value(QStringLiteral("end_ms")).toDouble());
@@ -823,7 +823,7 @@ void syncTranscriptToPixelion(PixelionAuthService *auth, QNetworkAccessManager *
 	const QString sourceLanguage =
 		metadata.value(QStringLiteral("source_language")).toString(QStringLiteral("auto"));
 	const QString targetLanguage = metadata.value(QStringLiteral("target_language")).toString();
-	for (const auto &value : cues) {
+	for (const auto value : cues) {
 		const QJsonObject cue = value.toObject();
 		const qint64 startMs =
 			std::max<qint64>(0, static_cast<qint64>(cue.value(QStringLiteral("start_ms")).toDouble()));
@@ -941,7 +941,7 @@ void openTranscriptHistory(QWidget *parent, PixelionAuthService *auth, QNetworkA
 	table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
 	table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
 	const auto files = QDir(directory).entryInfoList({QStringLiteral("*.txt")}, QDir::Files, QDir::Time);
-	table->setRowCount(files.size());
+	table->setRowCount(static_cast<int>(files.size()));
 	for (int row = 0; row < files.size(); ++row) {
 		const QFileInfo &info = files.at(row);
 		QString title = info.completeBaseName();
@@ -1309,7 +1309,7 @@ void saveTranscriptToPixelion(PixelionAuthService *auth, QNetworkAccessManager *
 	const qint64 durationMs = std::max<qint64>(1000, QDateTime::currentMSecsSinceEpoch() - startedAtMs);
 	QJsonArray segments;
 	const QJsonObject storedMetadata = readSessionMetadata(metadataPath);
-	for (const auto &value : storedMetadata.value(QStringLiteral("cues")).toArray()) {
+	for (const auto value : storedMetadata.value(QStringLiteral("cues")).toArray()) {
 		const QJsonObject cue = value.toObject();
 		const QString cueText = cue.value(QStringLiteral("text")).toString().trimmed();
 		if (cueText.isEmpty())
@@ -1624,18 +1624,23 @@ void loadStyle()
 			captionBackgroundColor = color;
 	}
 	if (obs_data_has_user_value(settings, "font_size"))
-		captionFontSize = std::clamp<int64_t>(obs_data_get_int(settings, "font_size"), 8, 120);
+		captionFontSize =
+			static_cast<uint32_t>(std::clamp<int64_t>(obs_data_get_int(settings, "font_size"), 8, 120));
 	if (obs_data_has_user_value(settings, "background_opacity"))
-		captionBackgroundOpacity =
-			std::clamp<int64_t>(obs_data_get_int(settings, "background_opacity"), 0, 100);
+		captionBackgroundOpacity = static_cast<uint32_t>(
+			std::clamp<int64_t>(obs_data_get_int(settings, "background_opacity"), 0, 100));
 	if (obs_data_has_user_value(settings, "text_alignment"))
-		captionTextAlignment = std::clamp<int64_t>(obs_data_get_int(settings, "text_alignment"), 0, 2);
+		captionTextAlignment =
+			static_cast<uint32_t>(std::clamp<int64_t>(obs_data_get_int(settings, "text_alignment"), 0, 2));
 	if (obs_data_has_user_value(settings, "visible_lines"))
-		captionVisibleLines = std::clamp<int64_t>(obs_data_get_int(settings, "visible_lines"), 1, 4);
+		captionVisibleLines =
+			static_cast<uint32_t>(std::clamp<int64_t>(obs_data_get_int(settings, "visible_lines"), 1, 4));
 	if (obs_data_has_user_value(settings, "background_mode"))
-		captionBackgroundMode = std::clamp<int64_t>(obs_data_get_int(settings, "background_mode"), 0, 1);
+		captionBackgroundMode =
+			static_cast<uint32_t>(std::clamp<int64_t>(obs_data_get_int(settings, "background_mode"), 0, 1));
 	if (obs_data_has_user_value(settings, "padding"))
-		captionPadding = std::clamp<int64_t>(obs_data_get_int(settings, "padding"), 0, 200);
+		captionPadding =
+			static_cast<uint32_t>(std::clamp<int64_t>(obs_data_get_int(settings, "padding"), 0, 200));
 	obs_data_release(settings);
 }
 

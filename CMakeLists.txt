@@ -84,7 +84,6 @@ if(WIN32)
     )
     target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Advapi32 Winhttp)
 elseif(APPLE)
-    find_package(Qt6 REQUIRED COMPONENTS WebSockets)
     target_sources(
         ${CMAKE_PROJECT_NAME}
         PRIVATE
@@ -95,7 +94,6 @@ elseif(APPLE)
     target_link_libraries(
         ${CMAKE_PROJECT_NAME}
         PRIVATE
-            Qt6::WebSockets
             "-framework Security"
             "-framework Foundation"
             "-framework CoreFoundation"
@@ -105,8 +103,9 @@ elseif(APPLE)
 
     # OBS bundles Qt6 but omits the Qt TLS backend plugins. Ship Qt's macOS TLS
     # backend dylib inside this plugin's bundle (beside the binary, in a "tls"
-    # subdirectory) so QNetworkAccessManager (HTTPS) and QWebSocket (WSS) have a
-    # working TLS backend with no user-installed dependency. registerBundled-
+    # subdirectory) so QNetworkAccessManager (HTTPS) has a working TLS backend
+    # with no user-installed dependency. (WSS uses NSURLSessionWebSocketTask and
+    # the system TLS stack, since obs-deps Qt6 ships no Qt6::WebSockets.) registerBundled-
     # QtTlsBackend() in src/platform/macos/tls-backend.mm resolves the binary via
     # dladdr and registers this directory on Qt's library path when it exists.
     get_filename_component(PIXELION_QT_ROOT "${Qt6_DIR}/../../.." ABSOLUTE)
