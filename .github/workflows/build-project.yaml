@@ -75,6 +75,13 @@ jobs:
     name: Build for macOS 🍏
     runs-on: macos-15
     needs: check-event
+    # macOS runners bill at 10x. To conserve limited free-tier minutes, this job
+    # runs ONLY on manual dispatch (Dispatch workflow / workflow_dispatch) or on a
+    # release tag push. Ordinary branch pushes (main, release/**) do NOT build
+    # macOS. See .kiro/steering/macos-ci.md.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.ref_type == 'tag'
     defaults:
       run:
         shell: zsh --no-rcs --errexit --pipefail {0}
