@@ -4,7 +4,7 @@ Pixelion Captions adds live transcription and translation to OBS Studio. It uses
 
 You can save transcripts on your computer, browse previous sessions, and optionally save transcripts to your Pixelion Library.
 
-Pixelion Captions is a third-party plugin developed by Pixel Solutions. It is not part of OBS Studio and is not affiliated with or endorsed by the OBS Project.
+Pixelion Captions is a third-party plugin designed and developed by Pixel Solutions, Milan, Italy. It is not part of OBS Studio and is not affiliated with or endorsed by the OBS Project.
 
 ## Screenshots
 
@@ -14,20 +14,26 @@ Captions shown live in a scene, over your webcam and content:
 
 ## Requirements
 
-You need Windows x64, OBS Studio, a free Pixelion.ai account, and an internet connection. Translation requires a Pixelion Pro plan. Available minutes and session limits depend on your subscription.
+You need OBS Studio on Windows x64 or macOS 13.7 (Ventura) and later, a free Pixelion.ai account, and an internet connection. Translation requires a Pixelion Pro plan. Available minutes and session limits depend on your subscription.
 
-The plugin has been tested with OBS Studio 32.0.1 on Windows x64. It is built against the OBS Studio 31.1.1 development dependencies. Compatibility with other OBS versions has not been confirmed. macOS support is planned. There are no plans for a Linux version.
+The plugin has been tested with OBS Studio 32.0.1 and is built against the OBS Studio 31.1.1 development dependencies. Compatibility with other OBS versions has not been confirmed. The macOS build is a universal binary (Apple silicon + Intel). There are no plans for a Linux version.
 
 ## Install
 
-1. Close OBS Studio.
-2. Download the Windows x64 ZIP from [Releases](https://github.com/pixelsolutions/pixelion-captions/releases). Choose the plugin package, rather than the source ZIP.
-3. Extract the ZIP and copy the `pixelion-captions` folder into `C:\ProgramData\obs-studio\plugins`. Keep its `bin` and `data` folders together.
-4. Open OBS Studio. Open the Docks menu and select Pixelion Captions.
+Close OBS Studio first, then download the package for your platform from [Releases](https://github.com/pixelsolutions/pixelion-captions/releases) (choose the plugin package, not the source ZIP).
+
+- **Windows** — run the installer `pixelion-captions-<version>-windows-x64-installer.exe`. It finds OBS, copies the files, and registers an uninstaller. A manual ZIP is also available if you prefer.
+- **macOS** — open the `.pkg` installer `pixelion-captions-<version>-macos-universal.pkg` and follow the steps (universal: Apple silicon + Intel).
+
+Then open OBS and select **Docks > Pixelion Captions**.
+
+Step-by-step guides with screenshots are in the wiki:
+[Installing on Windows](https://github.com/pixelsolutions/pixelion-captions/wiki/Installing-on-Windows) ·
+[Installing on macOS](https://github.com/pixelsolutions/pixelion-captions/wiki/Installing-on-macOS)
 
 ![Installing and opening Pixelion Captions in OBS](docs/wiki/images/install-steps.gif)
 
-When updating, close OBS before replacing the plugin files. Keep your existing plugin settings and saved transcripts.
+When updating, close OBS first. Re-run the installer (it upgrades in place) and your settings and saved transcripts are kept.
 
 ## Start using captions
 
@@ -68,6 +74,9 @@ Pixelion Captions is licensed under GPL-2.0-or-later; see [LICENSE](LICENSE). Ea
 
 ## Support
 
-Use Send Feedback at the bottom of the dock, beside Privacy policy, or report a bug on the [GitHub issue tracker](https://github.com/pixelsolutions/pixelion-captions/issues).
+- Ask questions on the [Pixelion Captions thread on the OBS forum](https://obsproject.com/forum/threads/pixelion-captions.196676/).
+- Use Send Feedback at the bottom of the dock, beside Privacy policy.
+- [Submit an issue](https://github.com/pixelsolutions/pixelion-captions/issues) for a bug or request.
+- Enjoying the plugin? [Submit a review](https://obsproject.com/forum/resources/pixelion-captions.2795/rate) on the OBS resource page.
 
-For bug reports, include your Windows version, OBS version, plugin version, and the steps needed to reproduce the problem. Please leave out account tokens, private audio, and transcript contents.
+For bug reports, include your OS version, OBS version, plugin version, and the steps needed to reproduce the problem. Please leave out account tokens, private audio, and transcript contents.
