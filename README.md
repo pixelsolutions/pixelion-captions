@@ -10,7 +10,7 @@ Pixelion Captions is a third-party plugin developed by Pixel Solutions. It is no
 
 Captions shown live in a scene, over your webcam and content:
 
-![Captions shown live in an OBS scene](docs/screenshots/obs_6.jpg)
+![Captions shown live in an OBS scene](docs/wiki/images/obs_6.jpg)
 
 ## Requirements
 
@@ -25,7 +25,7 @@ The plugin has been tested with OBS Studio 32.0.1 on Windows x64. It is built ag
 3. Extract the ZIP and copy the `pixelion-captions` folder into `C:\ProgramData\obs-studio\plugins`. Keep its `bin` and `data` folders together.
 4. Open OBS Studio. Open the Docks menu and select Pixelion Captions.
 
-![Installing and opening Pixelion Captions in OBS](docs/screenshots/install-steps.gif)
+![Installing and opening Pixelion Captions in OBS](docs/wiki/images/install-steps.gif)
 
 When updating, close OBS before replacing the plugin files. Keep your existing plugin settings and saved transcripts.
 

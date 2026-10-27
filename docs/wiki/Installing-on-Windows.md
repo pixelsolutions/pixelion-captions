@@ -134,3 +134,11 @@ Your transcripts (in `Documents\Pixelion Live Captions`) and saved account crede
 | Still listed in Plugin Manager after removing files | Clear the `pixelion-captions` entry from `modules.json` (see Full removal). The entry survives file deletion. |
 
 For OBS logs: in OBS, **Help > Log Files > View Current Log**, or browse `%APPDATA%\obs-studio\logs`.
+
+---
+
+## Need help?
+
+- Ask questions on the [Pixelion Captions thread on the OBS forum](https://obsproject.com/forum/threads/pixelion-captions.196676/).
+- [Submit an issue](https://github.com/pixelsolutions/pixelion-captions/issues) for a bug or request.
+- Enjoying the plugin? [Submit a review](https://obsproject.com/forum/resources/pixelion-captions.2795/rate).

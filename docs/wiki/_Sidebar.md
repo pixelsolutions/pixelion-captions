@@ -8,4 +8,6 @@
 
 - [README](https://github.com/pixelsolutions/pixelion-captions/blob/main/README.md)
 - [Releases](https://github.com/pixelsolutions/pixelion-captions/releases)
-- [Report an issue](https://github.com/pixelsolutions/pixelion-captions/issues)
+- [Ask on the OBS forum](https://obsproject.com/forum/threads/pixelion-captions.196676/)
+- [Submit issue](https://github.com/pixelsolutions/pixelion-captions/issues)
+- [Submit a review](https://obsproject.com/forum/resources/pixelion-captions.2795/rate)

@@ -2,9 +2,9 @@
 
 This release improves how the caption box behaves on screen so it works like real captions, and refreshes the default caption look.
 
-![Captions shown live in an OBS scene](https://raw.githubusercontent.com/pixelsolutions/pixelion-captions/main/docs/screenshots/obs_6.jpg)
+![Captions shown live in an OBS scene](https://raw.githubusercontent.com/pixelsolutions/pixelion-captions/main/docs/wiki/images/obs_6.jpg)
 
-![The Pixelion Captions dock](https://raw.githubusercontent.com/pixelsolutions/pixelion-captions/main/docs/screenshots/obs_pixelion.png)
+![The Pixelion Captions dock](https://raw.githubusercontent.com/pixelsolutions/pixelion-captions/main/docs/wiki/images/obs_pixelion.png)
 
 ### Changes
 - The caption box now appears only while transcription is arriving. When you press Start it no longer shows the "Your captions will appear here" placeholder, and the box stays hidden until the first caption comes in.

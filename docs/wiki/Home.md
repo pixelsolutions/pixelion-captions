@@ -2,14 +2,14 @@
 
 Pixelion Captions adds live transcription and translation to OBS Studio. It reads the audio from your OBS program mix and shows captions in a source you can place and style in your scene.
 
-Pixelion Captions is a third-party plugin developed by [Pixel Solutions](https://pixelsolutions.biz/). It is not part of OBS Studio and is not affiliated with or endorsed by the OBS Project.
+Pixelion Captions is a third-party plugin designed and developed by [Pixel Solutions](https://pixelsolutions.biz/), Milan, Italy. It is not part of OBS Studio and is not affiliated with or endorsed by the OBS Project.
 
 ## Installation
 
 Pick your operating system:
 
 - **[Installing on Windows](Installing-on-Windows)** — installer (`.exe`) or manual ZIP
-- **[Installing on macOS](Installing-on-macOS)** — code-signed `.plugin` bundle (notarized on tagged releases)
+- **[Installing on macOS](Installing-on-macOS)** — `.pkg` installer
 
 ## What you need
 
@@ -29,8 +29,10 @@ Once the plugin is installed and OBS lists it, see the [README](https://github.c
 
 ## Support
 
+- Ask questions on the [OBS forum thread](https://obsproject.com/forum/threads/pixelion-captions.196676/).
 - Use **Send Feedback** at the bottom of the dock.
-- Report a bug on the [issue tracker](https://github.com/pixelsolutions/pixelion-captions/issues). Include your OS version, OBS version, and plugin version. Please leave out account tokens, private audio, and transcript contents.
+- [Submit an issue](https://github.com/pixelsolutions/pixelion-captions/issues) for a bug or request. Include your OS version, OBS version, and plugin version. Please leave out account tokens, private audio, and transcript contents.
+- Enjoying the plugin? [Leave a review](https://obsproject.com/forum/resources/pixelion-captions.2795/rate) on the OBS resource page.
 
 ## License
 
