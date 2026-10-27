@@ -149,7 +149,8 @@ elseif(APPLE)
                 "${PIXELION_QT_TLS_BACKEND}"
                 "$<TARGET_BUNDLE_CONTENT_DIR:${CMAKE_PROJECT_NAME}>/MacOS/tls/${PIXELION_QT_TLS_BACKEND_NAME}"
             COMMAND
-                codesign --force --sign "$<IF:$<BOOL:${CODESIGN_IDENTITY}>,${CODESIGN_IDENTITY},->"
+                codesign --force --sign
+                "$<IF:$<BOOL:${CODESIGN_IDENTITY}>,${CODESIGN_IDENTITY},->"
                 ${PIXELION_TLS_SIGN_ARGS}
                 "$<TARGET_BUNDLE_CONTENT_DIR:${CMAKE_PROJECT_NAME}>/MacOS/tls/${PIXELION_QT_TLS_BACKEND_NAME}"
             VERBATIM
