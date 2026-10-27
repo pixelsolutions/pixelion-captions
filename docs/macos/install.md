@@ -2,9 +2,17 @@
 
 Feature: macos-platform-support, Task 6.4 (Requirements 6.7, 6.8)
 
-Pixelion Captions for macOS ships as a signed and notarized `.plugin` bundle
+Pixelion Captions for macOS ships as a code-signed `.plugin` bundle
 (`pixelion-captions.plugin`) with bundle id `ai.pixelion.captions`, built as a
 universal binary (arm64 + x86_64) for macOS 13.7 and later.
+
+> **Notarization:** a build is notarized only when it comes from a version tag
+> push, or from a manual run of the **Dispatch** workflow with **notarize = true**
+> (`gh workflow run dispatch.yaml -f job=build -f notarize=true`). A branch push or
+> a plain dispatch (notarize unchecked) is signed but **not** notarized, so
+> Gatekeeper blocks it on first launch — see
+> [First launch and Gatekeeper](#first-launch-and-gatekeeper) below. A notarized
+> build opens with no Gatekeeper prompt.
 
 ## Install directory
 
@@ -17,6 +25,30 @@ Copy `pixelion-captions.plugin` into one of:
 
 Create the `plugins` directory if it does not exist, then restart OBS Studio
 31.1.1 or later. The plugin appears in the OBS source/plugin list once loaded.
+
+## First launch and Gatekeeper
+
+A **notarized** release build loads with no Gatekeeper prompt; skip this section.
+
+A **signed-but-not-notarized** build (branch/dispatch build) is blocked by
+Gatekeeper on first load, because macOS only clears it silently once Apple's notary
+service has stapled a ticket. To allow a non-notarized build:
+
+- Remove the quarantine attribute, then restart OBS:
+
+  ```bash
+  xattr -dr com.apple.quarantine \
+    ~/Library/Application\ Support/obs-studio/plugins/pixelion-captions.plugin
+  ```
+
+  (use the `/Library/...` path instead for a system-wide install)
+
+- Or, after OBS reports the block, open **System Settings > Privacy & Security**,
+  scroll to the message about `pixelion-captions.plugin`, and click **Open Anyway**,
+  then relaunch OBS.
+
+This is only needed for non-notarized builds. Prefer a notarized release for normal
+distribution so end users never see this.
 
 ## First-launch permission prompts
 

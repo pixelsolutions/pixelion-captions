@@ -9,7 +9,7 @@ Pixelion Captions is a third-party plugin developed by [Pixel Solutions](https:/
 Pick your operating system:
 
 - **[Installing on Windows](Installing-on-Windows)** — installer (`.exe`) or manual ZIP
-- **[Installing on macOS](Installing-on-macOS)** — signed, notarized `.plugin` bundle
+- **[Installing on macOS](Installing-on-macOS)** — code-signed `.plugin` bundle (notarized on tagged releases)
 
 ## What you need
 

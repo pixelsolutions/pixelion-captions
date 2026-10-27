@@ -20,9 +20,10 @@ for each row.
 
 ## Preconditions
 
-- The signed, notarized `.plugin` bundle installed to
+- The `.plugin` bundle installed to
   `~/Library/Application Support/obs-studio/plugins/` (per-user) or
-  `/Library/Application Support/obs-studio/plugins/` (system-wide).
+  `/Library/Application Support/obs-studio/plugins/` (system-wide). V8 requires a
+  notarized (tagged-release) build; the other checks work with a signed build.
 - A Pixelion account with available minutes (and a Pro plan for the translate
   checks).
 - Working internet connectivity (except where a step says otherwise).
@@ -88,6 +89,10 @@ Pass: the Keychain refresh credential persists; the signed-in state is restored
 automatically (email and plan shown) without a new browser sign-in.
 
 ## V8 - Install notarized bundle, launch OBS (Req 6.5)
+
+Use a **notarized** build for this check. Only tagged release builds (or a manual
+dispatch with notarize enabled) are notarized; branch/dispatch builds are signed
+only and WILL be blocked by Gatekeeper, which is expected and is not a V8 failure.
 
 1. Install the notarized bundle on a clean Mac (Gatekeeper enabled, no developer
    overrides).
