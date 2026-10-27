@@ -1,22 +1,23 @@
-## Pixelion Captions 0.1.1
+## Pixelion Captions 0.1.2
 
-This release improves how the caption box behaves on screen so it works like real captions, and refreshes the default caption look.
+This release adds macOS support and a Windows installer, so you no longer need to unpack a ZIP by hand.
 
-![Captions shown live in an OBS scene](https://raw.githubusercontent.com/pixelsolutions/pixelion-captions/main/docs/wiki/images/obs_6.jpg)
+![Windows installer setup wizard](https://raw.githubusercontent.com/pixelsolutions/pixelion-captions/main/docs/wiki/images/mswin_exe_01.jpg)
 
-![The Pixelion Captions dock](https://raw.githubusercontent.com/pixelsolutions/pixelion-captions/main/docs/wiki/images/obs_pixelion.png)
+![macOS .pkg installer in the Downloads folder](https://raw.githubusercontent.com/pixelsolutions/pixelion-captions/main/docs/wiki/images/macos_pkg_01.png)
 
 ### Changes
-- The caption box now appears only while transcription is arriving. When you press Start it no longer shows the "Your captions will appear here" placeholder, and the box stays hidden until the first caption comes in.
-- After you stop speaking, the current caption stays visible for about two seconds and then the box hides itself, instead of leaving the last line on screen.
-- After a pause, the next thing you say starts on a clean box rather than continuing after the previous sentence. Your saved transcript still keeps the full text.
-- When you press Stop, the box clears and returns to the preview placeholder.
-- The default caption font size is now larger and the line spacing is tighter, for a cleaner look out of the box. Resetting the caption style also updates the font size selector to the new default.
+- macOS support: Pixelion Captions now runs on macOS 13.7 (Ventura) and later as a universal build for Apple silicon and Intel.
+- New Windows installer: the setup .exe finds your OBS Studio install, copies the plugin, and adds an uninstaller. It upgrades in place and keeps your settings and saved transcripts. The ZIP is still available.
+- New install guides with screenshots for Windows and macOS in the wiki, and an updated README.
 
 ### Install
 1. Close OBS Studio.
-2. Download the Windows x64 ZIP below (the plugin package, not the source ZIP).
-3. Extract it and copy the pixelion-captions folder into C:\ProgramData\obs-studio\plugins, keeping its bin and data folders together.
-4. Open OBS Studio, open the Docks menu, and select Pixelion Captions.
+2. Download the package for your platform below. The source ZIP is not needed to run the plugin.
+   - Windows: run pixelion-captions-0.1.2-windows-x64-installer.exe. The plugin ZIP is available if you prefer a manual install. Step-by-step guide: [Installing on Windows](https://github.com/pixelsolutions/pixelion-captions/wiki/Installing-on-Windows)
+   - macOS: open pixelion-captions-0.1.2-macos-universal.pkg and follow the steps. Step-by-step guide: [Installing on macOS](https://github.com/pixelsolutions/pixelion-captions/wiki/Installing-on-macOS)
+3. Open OBS Studio, open the Docks menu, and select Pixelion Captions.
 
-See the README for full usage instructions and requirements. Tested with OBS Studio 32.0.1 on Windows x64.
+A free Pixelion.ai account is needed to sign in. Translation requires a Pixelion Pro plan.
+
+See the README and the install guides in the wiki for full usage instructions and requirements. Tested with OBS Studio 32.2.2 on Windows and macOS.
