@@ -192,6 +192,10 @@ jobs:
     name: Build for Windows 🪟
     runs-on: windows-2022
     needs: check-event
+    # Manual dispatch or release tag only, same as the macOS job.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.ref_type == 'tag'
     defaults:
       run:
         shell: pwsh
