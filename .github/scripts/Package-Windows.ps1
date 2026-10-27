@@ -103,8 +103,18 @@ function Package {
         "/DOutputDir=${ProjectRoot}/release"
         "/DOutputName=${InstallerName}"
         "/DLicenseFile=${ProjectRoot}/LICENSE"
-        "${ScriptHome}/windows-installer.iss"
     )
+
+    # Pass the branding graphics (icon + wizard BMPs) when present so the
+    # installer is branded; the .iss gates all graphics on this define.
+    $AssetsDir = Join-Path $ScriptHome 'assets'
+    if ( Test-Path (Join-Path $AssetsDir 'pixelion.ico') ) {
+        $IsccArgs += "/DAssetsDir=${AssetsDir}"
+    } else {
+        Write-Warning "Installer assets not found in ${AssetsDir}; building unbranded installer."
+    }
+
+    $IsccArgs += "${ScriptHome}/windows-installer.iss"
     & $IsccPath @IsccArgs
     if ( $LASTEXITCODE -ne 0 ) { throw "iscc failed (${LASTEXITCODE})" }
     if ( ! ( Test-Path $InstallerPath ) ) { throw "Installer not produced: ${InstallerPath}" }
