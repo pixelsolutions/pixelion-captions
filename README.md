@@ -14,7 +14,7 @@ Captions shown live in a scene, over your webcam and content:
 
 ## Requirements
 
-You need OBS Studio on Windows x64 or macOS 13.7 (Ventura) and later, a free Pixelion.ai account, and an internet connection. Translation requires a Pixelion Pro plan. Available minutes and session limits depend on your subscription.
+You need OBS Studio on Windows x64 or macOS 13.7 (Ventura) and later, and an internet connection. A free Pixelion.ai account is recommended; you can also try live captions as a guest without an account (transcription only, with a limited free allowance that Pixelion sets on the server). Translation, Pixelion Library saving and add-on credits need an account, and translation needs a Pixelion Pro plan. Available minutes and session limits depend on your subscription.
 
 The plugin has been tested with OBS Studio 32.0.1 and is built against the OBS Studio 31.1.1 development dependencies. Compatibility with other OBS versions has not been confirmed. The macOS build is a universal binary (Apple silicon + Intel). There are no plans for a Linux version.
 
@@ -37,7 +37,7 @@ When updating, close OBS first. Re-run the installer (it upgrades in place) and 
 
 ## Start using captions
 
-1. Sign in to your Pixelion account from the dock.
+1. Sign in to your Pixelion account from the dock, or choose **Continue as guest** to try captions without an account. Guest mode shows how many free minutes you have left and supports transcription only; when the free minutes run out, captions stop, your transcript so far stays saved on your computer, and the dock offers **Create a free account**.
 2. Choose Transcribe or Translate.
 3. Select the speech language. For translation, also choose the language under Translate to.
 4. Check the audio processing consent box.
@@ -52,7 +52,7 @@ Speech language and Translate to remember your last selection when you restart O
 
 Open Transcription history to browse saved sessions. Use the settings button to choose where local transcripts are saved and whether to save them to your Pixelion Library.
 
-You can also enable Start/stop with streaming or recording. Automatic start still requires a signed-in account and audio processing consent. Consent must be given again after restarting OBS.
+You can also enable Start/stop with streaming or recording. Automatic start still requires a signed-in account (or guest mode) and audio processing consent. Consent must be given again after restarting OBS.
 
 ## Privacy
 

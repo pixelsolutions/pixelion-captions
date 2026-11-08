@@ -5,6 +5,7 @@
 
 #include "live-session.h"
 #include "auth-service.h"
+#include "guest-service.h"
 #include "plugin-debug-log.h"
 
 #include <obs.h>
@@ -29,7 +30,7 @@
 #include <mutex>
 
 #ifndef PIXELION_API_BASE_URL
-#define PIXELION_API_BASE_URL "https://9yw5ciothk.execute-api.us-east-1.amazonaws.com/prod"
+#define PIXELION_API_BASE_URL "https://api.pixelion.ai"
 #endif
 
 namespace {
@@ -161,7 +162,7 @@ PixelionLiveSession::PixelionLiveSession(PixelionAuthService *auth, QObject *par
 		}
 		if (secondsRemaining <= 0) {
 			limitTestTimer_->stop();
-			if (stateCallback_) stateCallback_(true, QStringLiteral("Your session limit has been reached."));
+			if (stateCallback_) stateCallback_(true, guestSession_ ? PixelionGuestApi::limitMessage() : QStringLiteral("Your session limit has been reached."));
 			stop();
 		}
 	});
@@ -199,6 +200,12 @@ void PixelionLiveSession::start(const QString &mode, const QString &sourceLangua
 void PixelionLiveSession::requestRealtimeToken(const QString &mode, const QString &sourceLanguage,
 							      const QString &targetLanguage, const QString &sessionId)
 {
+	lastLimit_ = LimitInfo();
+	guestSession_ = guest_ && guest_->active() && !auth_->isSignedIn();
+	if (guestSession_) {
+		requestGuestToken(sessionId);
+		return;
+	}
 	auth_->withAccessToken([this, mode, sourceLanguage, targetLanguage, sessionId](bool ok, const QString &access, const QString &error) {
 		if (sessionId != sessionId_ || stopRequested_) return;
 		if (!ok) {
@@ -227,6 +234,7 @@ void PixelionLiveSession::requestRealtimeToken(const QString &mode, const QStrin
 			const auto document = QJsonDocument::fromJson(payload, &parseError);
 			if (status != 200 || parseError.error != QJsonParseError::NoError || !document.isObject()) {
 				const auto error = document.object().value(QStringLiteral("error")).toString();
+				recordLimit(document.object());
 				PixelionDebugLog::write("ERROR", QStringLiteral("Realtime token request failed (HTTP %1%2): %3")
 								.arg(status).arg(networkError.isEmpty() ? QString() : QStringLiteral(", %1").arg(networkError), error));
 				QString message = error;
@@ -469,6 +477,10 @@ void PixelionLiveSession::stop()
 
 void PixelionLiveSession::checkUsage(bool final)
 {
+	if (guestSession_) {
+		checkGuestUsage(final);
+		return;
+	}
 	if (!auth_) return;
 	if (sessionId_.isEmpty() || !sessionClock_.isValid()) {
 		if (final) auth_->refreshUsage();
@@ -515,6 +527,7 @@ void PixelionLiveSession::checkUsage(bool final)
 			}
 			reportedSeconds_ = std::max(reportedSeconds_, toSecond);
 			const auto result = document.object();
+			if (!result.value(QStringLiteral("allowed")).toBool(true)) recordLimit(result);
 			const int durationLimit = result.value(QStringLiteral("duration_limit_seconds")).toInt();
 		if (durationLimit > 0) durationLimitSeconds_ = durationLimit;
 			const auto remaining = result.value(QStringLiteral("remaining_minutes"));
