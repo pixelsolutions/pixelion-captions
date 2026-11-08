@@ -1,3 +1,3 @@
 # macOS platform implementation
 
-This directory is reserved for a future macOS adapter. Pixelion Captions currently builds and runs on Windows x64 only. macOS support will need native credential storage, a realtime WebSocket transport, TLS packaging, and OBS lifecycle validation before it can be enabled in CMake or advertised.
+This directory holds the macOS platform adapters for Pixelion Captions: the TLS backend (`tls-backend.mm`), the auth service (`auth-service.mm`), and the live session (`live-session.mm`). These are built by CMake for macOS 13.7 (Ventura) and later as a universal binary (arm64 and x86_64), against the OBS Studio 31.1.1 dependencies. Pixelion Captions supports Windows x64 and macOS only.

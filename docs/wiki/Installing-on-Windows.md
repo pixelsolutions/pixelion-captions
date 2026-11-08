@@ -116,7 +116,7 @@ To remove everything, including saved settings and the OBS Plugin Manager regist
 
 | What | Path |
 |---|---|
-| Saved settings and sign-in | `%APPDATA%\obs-studio\plugin_config\pixelion-captions` |
+| Saved settings | `%APPDATA%\obs-studio\plugin_config\pixelion-captions` |
 | Plugin Manager entry | remove the `pixelion-captions` entry from `%APPDATA%\obs-studio\plugin_manager\modules.json` |
 
 Your transcripts (in `Documents\Pixelion Live Captions`) and saved account credentials (Windows Credential Manager) are left untouched unless you remove them yourself. If a scene still references a caption source, OBS shows it as unavailable; remove it inside OBS.
