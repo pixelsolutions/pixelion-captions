@@ -47,7 +47,7 @@
 #define PIXELION_COGNITO_REDIRECT_URI ""
 #endif
 #ifndef PIXELION_API_BASE_URL
-#define PIXELION_API_BASE_URL "https://9yw5ciothk.execute-api.us-east-1.amazonaws.com/prod"
+#define PIXELION_API_BASE_URL "https://api.pixelion.ai"
 #endif
 
 namespace {

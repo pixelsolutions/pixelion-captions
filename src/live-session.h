@@ -13,6 +13,8 @@ class QNetworkAccessManager;
 class QNetworkReply;
 class QTimer;
 class PixelionAuthService;
+class PixelionGuestService;
+class QJsonObject;
 
 class PixelionLiveSession final : public QObject {
 public:
@@ -28,14 +30,35 @@ public:
 	bool isRunning() const;
 	QString sessionId() const { return sessionId_; }
 
+	// Guest (no-account) mode. When a guest service is set and active while the
+	// user is signed out, the session uses the /guest/* routes (transcribe only).
+	void setGuestService(PixelionGuestService *guest) { guest_ = guest; }
+	bool isGuestSession() const { return guestSession_; }
+
+	// Details of the most recent metering denial, so the dock can choose between
+	// "Buy add-on credits" and "Upgrade" (MINUTES_LIMIT carries can_buy_addons).
+	struct LimitInfo {
+		QString code;
+		bool canBuyAddons = false;
+		bool hasCanBuyAddons = false;
+		double addonRemainingMinutes = 0.0;
+	};
+	const LimitInfo &lastLimit() const { return lastLimit_; }
+
 private:
 	void requestRealtimeToken(const QString &mode, const QString &sourceLanguage, const QString &targetLanguage,
-			  const QString &sessionId);
-	void beginWorker(const QString &mode, const QString &sourceLanguage, const QString &targetLanguage, const QString &sessionId,
-			 const QString &clientSecret);
+				  const QString &sessionId);
+	void beginWorker(const QString &mode, const QString &sourceLanguage, const QString &targetLanguage,
+			 const QString &sessionId, const QString &clientSecret);
 	void finishWorker();
+	void requestGuestToken(const QString &sessionId);
+	void checkGuestUsage(bool final);
+	void recordLimit(const QJsonObject &response);
 
 	PixelionAuthService *auth_ = nullptr;
+	PixelionGuestService *guest_ = nullptr;
+	bool guestSession_ = false;
+	LimitInfo lastLimit_;
 	QNetworkAccessManager *network_ = nullptr;
 	StateCallback stateCallback_;
 	CaptionCallback captionCallback_;

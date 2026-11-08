@@ -18,3 +18,26 @@ target_include_directories(
 
 enable_testing()
 add_test(NAME pixelion-captions-tests COMMAND pixelion-captions-tests)
+
+# Guest access + add-on credits tests run against the real shared headers, so
+# they need QtCore/QtNetwork. Built only when Qt6 is available.
+find_package(Qt6 QUIET COMPONENTS Core Network)
+if(Qt6_FOUND)
+    add_executable(pixelion-captions-guest-tests guest-addon-tests.cpp)
+    target_include_directories(
+        pixelion-captions-guest-tests
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src/shared"
+    )
+    target_compile_definitions(
+        pixelion-captions-guest-tests
+        PRIVATE PIXELION_API_BASE_URL="https://api.pixelion.ai"
+    )
+    target_link_libraries(
+        pixelion-captions-guest-tests
+        PRIVATE Qt6::Core Qt6::Network
+    )
+    add_test(
+        NAME pixelion-captions-guest-tests
+        COMMAND pixelion-captions-guest-tests
+    )
+endif()

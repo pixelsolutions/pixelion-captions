@@ -52,7 +52,7 @@ set(PIXELION_COGNITO_REDIRECT_URI
     "Pixelion native Windows OAuth callback"
 )
 set(PIXELION_API_BASE_URL
-    "https://9yw5ciothk.execute-api.us-east-1.amazonaws.com/prod"
+    "https://api.pixelion.ai"
     CACHE STRING
     "Pixelion API base URL"
 )
@@ -71,6 +71,9 @@ target_sources(
         src/plugin-main.cpp
         src/shared/plugin-debug-log.cpp
         src/shared/feedback-dialog.cpp
+        src/shared/guest-service.cpp
+        src/shared/addon-service.cpp
+        src/shared/live-session-shared.cpp
         resources/pixelion.qrc
 )
 

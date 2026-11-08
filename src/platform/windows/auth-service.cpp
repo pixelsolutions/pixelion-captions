@@ -31,7 +31,7 @@
 #define PIXELION_COGNITO_REDIRECT_URI ""
 #endif
 #ifndef PIXELION_API_BASE_URL
-#define PIXELION_API_BASE_URL "https://9yw5ciothk.execute-api.us-east-1.amazonaws.com/prod"
+#define PIXELION_API_BASE_URL "https://api.pixelion.ai"
 #endif
 
 namespace {
@@ -87,7 +87,7 @@ QString readRefreshToken()
 	if (!CredReadW(kCredentialTarget, CRED_TYPE_GENERIC, 0, &credential))
 		return {};
 	const QByteArray bytes(reinterpret_cast<const char *>(credential->CredentialBlob),
-				static_cast<qsizetype>(credential->CredentialBlobSize));
+			       static_cast<qsizetype>(credential->CredentialBlobSize));
 	CredFree(credential);
 	return QString::fromUtf8(bytes);
 }
@@ -135,12 +135,15 @@ QNetworkRequest secureRequest(const QUrl &url)
 } // namespace
 
 PixelionAuthService::PixelionAuthService(QObject *parent)
-	: QObject(parent), network_(new QNetworkAccessManager(this)), callbackServer_(new QTcpServer(this)),
+	: QObject(parent),
+	  network_(new QNetworkAccessManager(this)),
+	  callbackServer_(new QTcpServer(this)),
 	  callbackTimeout_(new QTimer(this))
 {
 	callbackTimeout_->setSingleShot(true);
 	connect(callbackServer_, &QTcpServer::newConnection, this, &PixelionAuthService::handleCallback);
-	connect(callbackTimeout_, &QTimer::timeout, this, [this] { failSignIn(QStringLiteral("Sign-in timed out. Please try again.")); });
+	connect(callbackTimeout_, &QTimer::timeout, this,
+		[this] { failSignIn(QStringLiteral("Sign-in timed out. Please try again.")); });
 }
 
 PixelionAuthService::~PixelionAuthService()
@@ -157,13 +160,15 @@ void PixelionAuthService::setStateCallback(StateCallback callback)
 void PixelionAuthService::setUsageCallback(UsageCallback callback)
 {
 	usageCallback_ = std::move(callback);
-	if (usageCallback_) usageCallback_(usageInfo_);
+	if (usageCallback_)
+		usageCallback_(usageInfo_);
 }
 
 void PixelionAuthService::publishUsage(const UsageInfo &usage)
 {
 	usageInfo_ = usage;
-	if (usageCallback_) usageCallback_(usageInfo_);
+	if (usageCallback_)
+		usageCallback_(usageInfo_);
 }
 
 void PixelionAuthService::refreshUsage()
@@ -173,12 +178,14 @@ void PixelionAuthService::refreshUsage()
 	loading.loading = true;
 	publishUsage(loading);
 	withAccessToken([this, generation](bool ok, const QString &access, const QString &) {
-		if (generation != usageRequestGeneration_) return;
+		if (generation != usageRequestGeneration_)
+			return;
 		if (!ok || !isSignedIn()) {
 			publishUsage(UsageInfo{});
 			return;
 		}
-		QNetworkRequest request = secureRequest(QUrl(QStringLiteral(PIXELION_API_BASE_URL) + QStringLiteral("/me/usage")));
+		QNetworkRequest request =
+			secureRequest(QUrl(QStringLiteral(PIXELION_API_BASE_URL) + QStringLiteral("/me/usage")));
 		request.setRawHeader("Authorization", QByteArray("Bearer ") + access.toUtf8());
 		auto *reply = network_->get(request);
 		connect(reply, &QNetworkReply::finished, this, [this, reply, generation] {
@@ -186,7 +193,8 @@ void PixelionAuthService::refreshUsage()
 			const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 			const bool networkOk = reply->error() == QNetworkReply::NoError;
 			reply->deleteLater();
-			if (generation != usageRequestGeneration_ || !isSignedIn()) return;
+			if (generation != usageRequestGeneration_ || !isSignedIn())
+				return;
 			if (!networkOk || status != 200) {
 				publishUsage(UsageInfo{});
 				return;
@@ -200,7 +208,8 @@ void PixelionAuthService::refreshUsage()
 			const auto object = document.object();
 			const auto minutes = object.value(QStringLiteral("minutes")).toObject();
 			UsageInfo usage;
-			usage.periodKind = object.value(QStringLiteral("period_kind")).toString(QStringLiteral("monthly"));
+			usage.periodKind =
+				object.value(QStringLiteral("period_kind")).toString(QStringLiteral("monthly"));
 			usage.unlimited = minutes.value(QStringLiteral("unlimited")).toBool(false);
 			if (usage.unlimited) {
 				usage.known = true;
@@ -209,7 +218,10 @@ void PixelionAuthService::refreshUsage()
 				const auto limitValue = minutes.value(QStringLiteral("limit"));
 				if (usedValue.isDouble() && limitValue.isDouble() && limitValue.toDouble() > 0.0) {
 					const int limit = static_cast<int>(std::floor(limitValue.toDouble()));
-					const int remaining = std::clamp(static_cast<int>(std::floor(limitValue.toDouble() - usedValue.toDouble())), 0, limit);
+					const int remaining =
+						std::clamp(static_cast<int>(std::floor(limitValue.toDouble() -
+										       usedValue.toDouble())),
+							   0, limit);
 					usage.known = true;
 					usage.limitMinutes = limit;
 					usage.usedMinutes = limit - remaining;
@@ -222,10 +234,12 @@ void PixelionAuthService::refreshUsage()
 
 void PixelionAuthService::updateUsageRemainingMinutes(int remainingMinutes)
 {
-	if (!usageInfo_.known || usageInfo_.unlimited || usageInfo_.limitMinutes <= 0) return;
+	if (!usageInfo_.known || usageInfo_.unlimited || usageInfo_.limitMinutes <= 0)
+		return;
 	const int remaining = std::clamp(remainingMinutes, 0, usageInfo_.limitMinutes);
 	usageInfo_.usedMinutes = usageInfo_.limitMinutes - remaining;
-	if (usageCallback_) usageCallback_(usageInfo_);
+	if (usageCallback_)
+		usageCallback_(usageInfo_);
 }
 
 bool PixelionAuthService::isSignedIn() const
@@ -233,9 +247,18 @@ bool PixelionAuthService::isSignedIn() const
 	return !accessToken_.isEmpty() && !email_.isEmpty();
 }
 
-QString PixelionAuthService::email() const { return email_; }
-QString PixelionAuthService::userId() const { return userId_; }
-QString PixelionAuthService::plan() const { return plan_; }
+QString PixelionAuthService::email() const
+{
+	return email_;
+}
+QString PixelionAuthService::userId() const
+{
+	return userId_;
+}
+QString PixelionAuthService::plan() const
+{
+	return plan_;
+}
 
 void PixelionAuthService::publish(const QString &message)
 {
@@ -252,7 +275,8 @@ void PixelionAuthService::restore()
 	publish(QStringLiteral("Restoring your Pixelion account…"));
 	refreshAccessToken([this](bool ok, const QString &, const QString &error) {
 		if (!ok) {
-			publish(error.isEmpty() ? QStringLiteral("Could not restore your account. Sign in again.") : error);
+			publish(error.isEmpty() ? QStringLiteral("Could not restore your account. Sign in again.")
+						: error);
 			return;
 		}
 		loadProfile();
@@ -280,8 +304,10 @@ void PixelionAuthService::signIn(bool createAccount)
 
 	pendingVerifier_ = base64Url(secureRandomBytes(32));
 	pendingState_ = base64Url(secureRandomBytes(24));
-	const auto challenge = base64Url(QCryptographicHash::hash(pendingVerifier_.toUtf8(), QCryptographicHash::Sha256));
-	QUrl authUrl(QString::fromLatin1(kCognitoOrigin) + (createAccount ? QStringLiteral("/signup") : QStringLiteral("/oauth2/authorize")));
+	const auto challenge =
+		base64Url(QCryptographicHash::hash(pendingVerifier_.toUtf8(), QCryptographicHash::Sha256));
+	QUrl authUrl(QString::fromLatin1(kCognitoOrigin) +
+		     (createAccount ? QStringLiteral("/signup") : QStringLiteral("/oauth2/authorize")));
 	QUrlQuery query;
 	query.addQueryItem(QStringLiteral("response_type"), QStringLiteral("code"));
 	query.addQueryItem(QStringLiteral("client_id"), clientId);
@@ -320,12 +346,14 @@ void PixelionAuthService::handleCallback()
 			const QString state = query.queryItemValue(QStringLiteral("state"));
 			const QString code = query.queryItemValue(QStringLiteral("code"));
 			const QString error = query.queryItemValue(QStringLiteral("error"));
-			QByteArray response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n"
+			QByteArray response =
+				"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n"
 				"<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"color-scheme\" content=\"light dark\"><title>Pixelion · Sign-in complete</title>"
 				"<style>:root{color-scheme:light dark;font-family:Inter,\"Segoe UI\",system-ui,-apple-system,sans-serif;background:#f4f5f8;color:#20232c}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}.card{width:min(100%,440px);padding:36px 34px 30px;border:1px solid #e4e6ed;border-radius:20px;background:#fff;box-shadow:0 16px 48px #20274614;text-align:center}.brand{font-size:13px;font-weight:750;letter-spacing:.13em;color:#5d6371}.logo{display:block;width:76px;height:76px;margin:24px auto 16px;object-fit:contain}h1{margin:0;font-size:24px;letter-spacing:-.025em}p{margin:12px 0 0;color:#626979;font-size:15px;line-height:1.6}.hint{display:inline-block;margin-top:25px;padding:10px 14px;border-radius:10px;background:#f3f2f7;color:#4e5361;font-size:13px;font-weight:600}.foot{margin-top:27px;color:#989daa;font-size:12px}@media(prefers-color-scheme:dark){:root{background:#171920;color:#f3f4f7}.card{background:#22252e;border-color:#343844;box-shadow:0 16px 48px #0004}.brand{color:#b6bac6}p{color:#b1b6c3}.hint{background:#30333e;color:#d5d8e0}.foot{color:#858b99}}</style></head><body><main class=\"card\"><div class=\"brand\">PIXELION CAPTIONS</div><img class=\"logo\" src=\"PIXELION_LOGO_DATA\" alt=\"Pixelion logo\"><h1>You’re signed in</h1><p>Your Pixelion account is connected. Return to OBS to finish setting up live captions.</p><div class=\"hint\">You can close this tab and switch back to OBS.</div><div class=\"foot\">Pixelion Captions</div></main></body></html>";
 			QFile logoFile(QStringLiteral(":/pixelion/logo.png"));
 			if (logoFile.open(QIODevice::ReadOnly))
-				response.replace("PIXELION_LOGO_DATA", QByteArray("data:image/png;base64,") + logoFile.readAll().toBase64());
+				response.replace("PIXELION_LOGO_DATA",
+						 QByteArray("data:image/png;base64,") + logoFile.readAll().toBase64());
 			socket->write(response);
 			socket->disconnectFromHost();
 			if (!signInPending_ || callbackUrl.path() != expectedPath || state != pendingState_)
@@ -333,8 +361,9 @@ void PixelionAuthService::handleCallback()
 			callbackTimeout_->stop();
 			callbackServer_->close();
 			if (!error.isEmpty() || code.isEmpty()) {
-				failSignIn(error == QStringLiteral("access_denied") ? QStringLiteral("Sign-in was cancelled.")
-								 : QStringLiteral("Pixelion sign-in was not completed."));
+				failSignIn(error == QStringLiteral("access_denied")
+						   ? QStringLiteral("Sign-in was cancelled.")
+						   : QStringLiteral("Pixelion sign-in was not completed."));
 				return;
 			}
 			exchangeCode(code);
@@ -369,20 +398,28 @@ void PixelionAuthService::exchangeCode(const QString &code)
 		if (networkError != QNetworkReply::NoError || status != 200) {
 			QJsonParseError parseError;
 			const auto errorDocument = QJsonDocument::fromJson(body, &parseError);
-			const QString oauthError = parseError.error == QJsonParseError::NoError && errorDocument.isObject()
-					   ? errorDocument.object().value(QStringLiteral("error")).toString()
-					   : QString();
+			const QString oauthError =
+				parseError.error == QJsonParseError::NoError && errorDocument.isObject()
+					? errorDocument.object().value(QStringLiteral("error")).toString()
+					: QString();
 			QString message;
 			if (oauthError == QStringLiteral("invalid_grant"))
-				message = QStringLiteral("Pixelion rejected the sign-in code (expired or already used). Start sign-in again.");
+				message = QStringLiteral(
+					"Pixelion rejected the sign-in code (expired or already used). Start sign-in again.");
 			else if (oauthError == QStringLiteral("invalid_client"))
 				message = QStringLiteral("Pixelion rejected this app's sign-in configuration.");
 			else if (oauthError == QStringLiteral("invalid_request"))
-				message = QStringLiteral("Pixelion rejected the sign-in request. Check the app callback configuration.");
+				message = QStringLiteral(
+					"Pixelion rejected the sign-in request. Check the app callback configuration.");
 			else if (networkError != QNetworkReply::NoError)
-				message = QStringLiteral("Could not reach Pixelion's token service (%1). Check your connection and retry.").arg(networkErrorText);
+				message =
+					QStringLiteral(
+						"Could not reach Pixelion's token service (%1). Check your connection and retry.")
+						.arg(networkErrorText);
 			else
-				message = QStringLiteral("Pixelion's token service returned HTTP %1. Try signing in again.").arg(status);
+				message = QStringLiteral(
+						  "Pixelion's token service returned HTTP %1. Try signing in again.")
+						  .arg(status);
 			failSignIn(message);
 			return;
 		}
@@ -456,9 +493,12 @@ void PixelionAuthService::refreshAccessToken(AccessTokenCallback callback)
 				plan_.clear();
 				publish(QStringLiteral("Your Pixelion sign-in expired. Sign in again."));
 			}
-			callback(false, {}, status == 0
-				? QStringLiteral("Could not reach Pixelion. Live transcription and translation need an internet connection. Check your connection, then try Start again.")
-				: QStringLiteral("Could not refresh your Pixelion sign-in."));
+			callback(
+				false, {},
+				status == 0
+					? QStringLiteral(
+						  "Could not reach Pixelion. Live transcription and translation need an internet connection. Check your connection, then try Start again.")
+					: QStringLiteral("Could not refresh your Pixelion sign-in."));
 			return;
 		}
 		QJsonParseError parseError;
@@ -474,7 +514,8 @@ void PixelionAuthService::refreshAccessToken(AccessTokenCallback callback)
 		if (!id.isEmpty())
 			idToken_ = id;
 		accessToken_ = access;
-		accessTokenExpiresAt_ = QDateTime::currentSecsSinceEpoch() + document.object().value(QStringLiteral("expires_in")).toInteger(3600);
+		accessTokenExpiresAt_ = QDateTime::currentSecsSinceEpoch() +
+					document.object().value(QStringLiteral("expires_in")).toInteger(3600);
 		callback(true, accessToken_, {});
 	});
 }
