@@ -1,6 +1,6 @@
 # Installing on Windows
 
-Pixelion Captions runs on **Windows x64** with OBS Studio (tested with 32.0.1). There are two ways to install it:
+Pixelion Captions runs on **Windows x64** with OBS Studio (tested up to 32.2.2). There are two ways to install it:
 
 - **[Installer (recommended)](#installer-recommended)** — a guided `.exe` that finds OBS, copies the files, and registers an entry in Add/Remove Programs.
 - **[Manual ZIP](#manual-zip)** — extract and copy the files yourself. Use this if you prefer not to run an installer or need a portable setup.

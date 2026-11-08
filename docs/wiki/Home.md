@@ -15,7 +15,7 @@ Pick your operating system:
 
 | | Requirement |
 |---|---|
-| OBS Studio | Tested with 32.0.1 (built against 31.1.1 dependencies). Other versions are not confirmed. |
+| OBS Studio | Tested up to 32.2.2 (built against 31.1.1 dependencies). Other versions are not confirmed. |
 | Platform | Windows x64, or macOS 13.7 (Ventura) and later (universal: Apple silicon + Intel) |
 | Account | A free Pixelion.ai account |
 | Network | An internet connection for live transcription and translation |

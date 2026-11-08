@@ -38,7 +38,7 @@ When it finishes you'll see a success screen. Click **Close**.
 
 ## 3. Open the dock in OBS
 
-Launch OBS Studio (31.1.1 or later). Once the plugin loads it appears in the OBS source/plugin list. Open the dock from **Docks > Pixelion Captions**, then sign in to start captions.
+Launch OBS Studio (tested up to 32.2.2). Once the plugin loads it appears in the OBS source/plugin list. Open the dock from **Docks > Pixelion Captions**, then sign in to start captions.
 
 ![OBS Docks menu with Pixelion Captions selected and the dock open on macOS](https://raw.githubusercontent.com/pixelsolutions/pixelion-captions/main/docs/wiki/images/macos_pkg_05.png)
 
@@ -85,9 +85,9 @@ Your transcripts and the Keychain sign-in entry are left untouched unless you re
 
 | macOS | Architecture | OBS Studio |
 |---|---|---|
-| 13.7 Ventura | Apple silicon / Intel | 31.1.1+ |
-| 14.x Sonoma | Apple silicon | 31.1.1+ |
-| 15.x Sequoia | Apple silicon | 31.1.1+ |
+| 13.7 Ventura | Apple silicon / Intel | Tested up to 32.2.2 |
+| 14.x Sonoma | Apple silicon / Intel | Tested up to 32.2.2 |
+| 15.x Sequoia | Apple silicon / Intel | Tested up to 32.2.2 |
 
 ---
 
