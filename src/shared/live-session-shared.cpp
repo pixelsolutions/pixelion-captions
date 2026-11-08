@@ -44,7 +44,8 @@ void PixelionLiveSession::requestGuestToken(const QString &sessionId)
 	connect(reply, &QNetworkReply::finished, this, [this, reply, sessionId, sourceLanguage] {
 		const QByteArray payload = reply->readAll().left(1024 * 1024);
 		const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-		const QString networkError = reply->error() == QNetworkReply::NoError ? QString() : reply->errorString();
+		const QString networkError = reply->error() == QNetworkReply::NoError ? QString()
+										      : reply->errorString();
 		reply->deleteLater();
 		if (sessionId != sessionId_)
 			return;
@@ -58,12 +59,16 @@ void PixelionLiveSession::requestGuestToken(const QString &sessionId)
 		const auto document = QJsonDocument::fromJson(payload, &parseError);
 		if (status != 200 || parseError.error != QJsonParseError::NoError || !document.isObject()) {
 			const QString code = PixelionGuestApi::errorCode(payload);
-			PixelionDebugLog::write("ERROR", QStringLiteral("Guest realtime token request failed (HTTP %1%2): %3")
-								 .arg(status)
-								 .arg(networkError.isEmpty() ? QString() : QStringLiteral(", %1").arg(networkError), code));
+			PixelionDebugLog::write(
+				"ERROR", QStringLiteral("Guest realtime token request failed (HTTP %1%2): %3")
+						 .arg(status)
+						 .arg(networkError.isEmpty() ? QString()
+									     : QStringLiteral(", %1").arg(networkError),
+						      code));
 			QString message;
 			if (status == 0 && !networkError.isEmpty()) {
-				message = QStringLiteral("Could not reach Pixelion. Live transcription needs an internet connection. Check your connection, then try Start again.");
+				message = QStringLiteral(
+					"Could not reach Pixelion. Live transcription needs an internet connection. Check your connection, then try Start again.");
 			} else if (code == QStringLiteral("GUEST_LIMIT_REACHED")) {
 				if (document.isObject())
 					guest_->applyUsage(PixelionGuestApi::usageFromObject(document.object()));
@@ -74,7 +79,8 @@ void PixelionLiveSession::requestGuestToken(const QString &sessionId)
 			} else if (code == QStringLiteral("MODE_NOT_ALLOWED")) {
 				message = QStringLiteral("Live translation needs a free Pixelion account.");
 			} else {
-				message = QStringLiteral("Pixelion could not start this session. Check your connection and try again.");
+				message = QStringLiteral(
+					"Pixelion could not start this session. Check your connection and try again.");
 			}
 			pending_ = false;
 			if (stateCallback_)
@@ -84,14 +90,20 @@ void PixelionLiveSession::requestGuestToken(const QString &sessionId)
 		const auto object = document.object();
 		const QString secret = object.value(QStringLiteral("client_secret")).toString();
 		if (secret.isEmpty()) {
-			PixelionDebugLog::write("ERROR", QStringLiteral("Pixelion guest realtime token response did not include a client secret"));
+			PixelionDebugLog::write(
+				"ERROR",
+				QStringLiteral(
+					"Pixelion guest realtime token response did not include a client secret"));
 			pending_ = false;
 			if (stateCallback_)
-				stateCallback_(false, QStringLiteral("Pixelion returned an incomplete realtime session token."));
+				stateCallback_(
+					false,
+					QStringLiteral("Pixelion returned an incomplete realtime session token."));
 			return;
 		}
 		guest_->applyUsage(PixelionGuestApi::usageFromObject(object));
-		const int remaining = PixelionGuestApi::wholeSeconds(object.value(QStringLiteral("guest_remaining_seconds")));
+		const int remaining =
+			PixelionGuestApi::wholeSeconds(object.value(QStringLiteral("guest_remaining_seconds")));
 		const int cap = PixelionGuestApi::wholeSeconds(object.value(QStringLiteral("duration_limit_seconds")));
 		beginWorker(QStringLiteral("transcribe"), sourceLanguage, QString(), sessionId, secret);
 		// beginWorker() resets the limit; set it after so the dock warns and stops at the allowance.
@@ -117,8 +129,9 @@ void PixelionLiveSession::checkGuestUsage(bool final)
 			guest_->refresh();
 		return;
 	}
-	auto *reply = network_->post(PixelionGuestApi::jsonPostRequest(QStringLiteral("/guest/realtime-token/usage-check"), 10000),
-				     PixelionGuestApi::usageCheckBody(guest_->visitorId(), sessionId_, fromSecond, toSecond));
+	auto *reply = network_->post(
+		PixelionGuestApi::jsonPostRequest(QStringLiteral("/guest/realtime-token/usage-check"), 10000),
+		PixelionGuestApi::usageCheckBody(guest_->visitorId(), sessionId_, fromSecond, toSecond));
 	connect(reply, &QNetworkReply::finished, this, [this, reply, toSecond, final] {
 		const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 		const QByteArray payload = reply->readAll().left(256 * 1024);
@@ -129,12 +142,15 @@ void PixelionLiveSession::checkGuestUsage(bool final)
 		const QJsonObject object = parsed ? document.object() : QJsonObject();
 		bool limitReached = false;
 		if (status == 200 && parsed) {
-			const int watermark = PixelionGuestApi::wholeSeconds(object.value(QStringLiteral("watermark_second")));
+			const int watermark =
+				PixelionGuestApi::wholeSeconds(object.value(QStringLiteral("watermark_second")));
 			reportedSeconds_ = std::max(reportedSeconds_, watermark >= 0 ? watermark : toSecond);
 			guest_->applyUsage(PixelionGuestApi::usageFromObject(object));
 			limitReached = guest_->exhausted();
-		} else if (status == 403 && PixelionGuestApi::errorCode(payload) == QStringLiteral("GUEST_LIMIT_REACHED")) {
-			const int watermark = PixelionGuestApi::wholeSeconds(object.value(QStringLiteral("watermark_second")));
+		} else if (status == 403 &&
+			   PixelionGuestApi::errorCode(payload) == QStringLiteral("GUEST_LIMIT_REACHED")) {
+			const int watermark =
+				PixelionGuestApi::wholeSeconds(object.value(QStringLiteral("watermark_second")));
 			reportedSeconds_ = std::max(reportedSeconds_, watermark >= 0 ? watermark : toSecond);
 			guest_->applyUsage(PixelionGuestApi::usageFromObject(object));
 			limitReached = true;

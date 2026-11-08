@@ -47,9 +47,9 @@ public:
 
 private:
 	void requestRealtimeToken(const QString &mode, const QString &sourceLanguage, const QString &targetLanguage,
-			  const QString &sessionId);
-	void beginWorker(const QString &mode, const QString &sourceLanguage, const QString &targetLanguage, const QString &sessionId,
-			 const QString &clientSecret);
+				  const QString &sessionId);
+	void beginWorker(const QString &mode, const QString &sourceLanguage, const QString &targetLanguage,
+			 const QString &sessionId, const QString &clientSecret);
 	void finishWorker();
 	void requestGuestToken(const QString &sessionId);
 	void checkGuestUsage(bool final);

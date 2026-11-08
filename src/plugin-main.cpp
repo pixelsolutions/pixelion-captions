@@ -2352,8 +2352,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		saveLocally->setEnabled(canEdit);
 		saveToPixelion->setEnabled(canEdit && auth->isSignedIn());
 		if (!auth->isSignedIn())
-			saveToPixelion->setToolTip(
-				QStringLiteral("Sign in or create a free account to save transcripts to Pixelion Library."));
+			saveToPixelion->setToolTip(QStringLiteral(
+				"Sign in or create a free account to save transcripts to Pixelion Library."));
 		browse->setEnabled(canEdit);
 		filenamePattern->setEnabled(canEdit);
 		if (!canEdit) {
@@ -2434,7 +2434,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		if (!boxPtr || !textPtr || !addPtr || !retryPtr)
 			return;
 		const auto &e = addon->entitlements();
-		const bool show = auth->isSignedIn() && e.known && (!e.packs.isEmpty() || e.addonEligible || !e.addonsAvailable);
+		const bool show = auth->isSignedIn() && e.known &&
+				  (!e.packs.isEmpty() || e.addonEligible || !e.addonsAvailable);
 		boxPtr->setVisible(show);
 		if (!show)
 			return;
@@ -2446,7 +2447,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 				lines << PixelionAddonApi::packText(pack);
 			if (e.packs.isEmpty() && e.addonEligible) {
 				const QString price = PixelionAddonApi::priceText(e);
-				lines << QStringLiteral("Add credits%1. Credits roll over and stay valid for 12 months.")
+				lines << QStringLiteral(
+						 "Add credits%1. Credits roll over and stay valid for 12 months.")
 						 .arg(price.isEmpty() ? QString() : QStringLiteral(" ") + price);
 			}
 			if (e.hasMinutesRemaining)
@@ -2459,14 +2461,13 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	};
 	addon->setChangedCallback(updateCredits);
 	QObject::connect(retryCredits, &QPushButton::clicked, root, [addon] { addon->refresh(); });
-	QObject::connect(addCredits, &QPushButton::clicked, root,
-			 [addon, textPtr = QPointer<QLabel>(creditsText)] {
-				 addon->openCheckout(QStringLiteral("account_page"),
-						     [textPtr](bool ok, const PixelionAddonApi::CheckoutError &error) {
-							     if (!ok && textPtr)
-								     textPtr->setText(error.message);
-						     });
-			 });
+	QObject::connect(addCredits, &QPushButton::clicked, root, [addon, textPtr = QPointer<QLabel>(creditsText)] {
+		addon->openCheckout(QStringLiteral("account_page"),
+				    [textPtr](bool ok, const PixelionAddonApi::CheckoutError &error) {
+					    if (!ok && textPtr)
+						    textPtr->setText(error.message);
+				    });
+	});
 	QObject::connect(signIn, &QPushButton::clicked, root, [auth] { auth->signIn(false); });
 	QObject::connect(createAccount, &QPushButton::clicked, root, [auth] { auth->signIn(true); });
 	QPointer<QLabel> accountLabel = accountMessage;
@@ -2474,7 +2475,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	QPointer<QPushButton> createAccountButton = createAccount;
 	auth->setStateCallback([accountLabel, signInButton, createAccountButton,
 				upgradeButtonPtr = QPointer<QPushButton>(upgradeButton), readiness, guest, addon,
-				guestUi, resetGuestCta](const QString &email, const QString &plan, const QString &message) {
+				guestUi,
+				resetGuestCta](const QString &email, const QString &plan, const QString &message) {
 		const QString normalized = message.toLower();
 		if (normalized.contains(QStringLiteral("could not")) || normalized.contains(QStringLiteral("failed")) ||
 		    normalized.contains(QStringLiteral("error")) || normalized.contains(QStringLiteral("rejected")) ||
@@ -2517,39 +2519,39 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		if (signedIn && autoStartHandler)
 			autoStartHandler(streamingActive || recordingActive);
 	});
-	auth->setUsageCallback(
-		[usageSummaryPtr = QPointer<QLabel>(usageSummary),
-		 usageBarPtr = QPointer<QProgressBar>(usageBar), auth, guest](const PixelionAuthService::UsageInfo &usage) {
-			if (!usageSummaryPtr || !usageBarPtr)
-				return;
-			if (guest->active() && !auth->isSignedIn())
-				return; // the guest allowance is shown instead
-			if (usage.loading) {
-				usageSummaryPtr->setText(QStringLiteral("Loading available minutes…"));
-				usageSummaryPtr->setVisible(true);
-				usageBarPtr->setVisible(false);
-			} else if (!usage.known) {
-				usageSummaryPtr->setVisible(false);
-				usageBarPtr->setVisible(false);
-			} else if (usage.unlimited) {
-				usageSummaryPtr->setText(QStringLiteral("Unlimited minutes"));
-				usageSummaryPtr->setVisible(true);
-				usageBarPtr->setVisible(false);
-			} else {
-				const int remaining = std::max(0, usage.limitMinutes - usage.usedMinutes);
-				const QString period = usage.periodKind == QStringLiteral("trial")
-							       ? QStringLiteral("in your trial")
-							       : QStringLiteral("this month");
-				usageSummaryPtr->setText(QStringLiteral("%1 of %2 minutes remaining %3")
-								 .arg(remaining)
-								 .arg(usage.limitMinutes)
-								 .arg(period));
-				usageSummaryPtr->setVisible(true);
-				usageBarPtr->setRange(0, usage.limitMinutes);
-				usageBarPtr->setValue(usage.usedMinutes);
-				usageBarPtr->setVisible(true);
-			}
-		});
+	auth->setUsageCallback([usageSummaryPtr = QPointer<QLabel>(usageSummary),
+				usageBarPtr = QPointer<QProgressBar>(usageBar), auth,
+				guest](const PixelionAuthService::UsageInfo &usage) {
+		if (!usageSummaryPtr || !usageBarPtr)
+			return;
+		if (guest->active() && !auth->isSignedIn())
+			return; // the guest allowance is shown instead
+		if (usage.loading) {
+			usageSummaryPtr->setText(QStringLiteral("Loading available minutes…"));
+			usageSummaryPtr->setVisible(true);
+			usageBarPtr->setVisible(false);
+		} else if (!usage.known) {
+			usageSummaryPtr->setVisible(false);
+			usageBarPtr->setVisible(false);
+		} else if (usage.unlimited) {
+			usageSummaryPtr->setText(QStringLiteral("Unlimited minutes"));
+			usageSummaryPtr->setVisible(true);
+			usageBarPtr->setVisible(false);
+		} else {
+			const int remaining = std::max(0, usage.limitMinutes - usage.usedMinutes);
+			const QString period = usage.periodKind == QStringLiteral("trial")
+						       ? QStringLiteral("in your trial")
+						       : QStringLiteral("this month");
+			usageSummaryPtr->setText(QStringLiteral("%1 of %2 minutes remaining %3")
+							 .arg(remaining)
+							 .arg(usage.limitMinutes)
+							 .arg(period));
+			usageSummaryPtr->setVisible(true);
+			usageBarPtr->setRange(0, usage.limitMinutes);
+			usageBarPtr->setValue(usage.usedMinutes);
+			usageBarPtr->setVisible(true);
+		}
+	});
 
 	auto *sessionHeading = new QLabel(QStringLiteral("Start a session"), content);
 	QFont sessionHeadingFont = sessionHeading->font();
@@ -2622,9 +2624,9 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 			return;
 		const bool hasAccess = auth->isSignedIn() || guest->active();
 		const bool consented = hasAccess && consent->isChecked();
-		status->setText(consented ? QStringLiteral("Ready to start live captions")
-					  : (hasAccess
-						     ? QStringLiteral("Agree to audio processing before starting.")
+		status->setText(consented
+					? QStringLiteral("Ready to start live captions")
+					: (hasAccess ? QStringLiteral("Agree to audio processing before starting.")
 						     : QStringLiteral("Sign in to Pixelion to set up live captions.")));
 		statusDot->setStyleSheet(consented ? QStringLiteral("background-color: #f0a23a; border-radius: 4px;")
 						   : QStringLiteral("background-color: #78808e; border-radius: 4px;"));
@@ -2740,51 +2742,59 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		writeTranscriptMetadata(false);
 		return session->isRunning();
 	};
-	QObject::connect(start, &QPushButton::clicked, root,
-			 [session, auth, addon, beginSession, limitActionState, statusPtr = QPointer<QLabel>(status),
-			  startPtr = QPointer<SpinnerButton>(start)] {
-		if (!limitActionState->isEmpty()) {
-			if (*limitActionState == QStringLiteral("guest")) {
-				auth->signIn(true);
+	QObject::connect(
+		start, &QPushButton::clicked, root,
+		[session, auth, addon, beginSession, limitActionState, statusPtr = QPointer<QLabel>(status),
+		 startPtr = QPointer<SpinnerButton>(start)] {
+			if (!limitActionState->isEmpty()) {
+				if (*limitActionState == QStringLiteral("guest")) {
+					auth->signIn(true);
+					return;
+				}
+				if (*limitActionState == QStringLiteral("account")) {
+					QDesktopServices::openUrl(QUrl(QStringLiteral("https://pixelion.ai/account")));
+					return;
+				}
+				if (*limitActionState == QStringLiteral("buy")) {
+					addon->openCheckout(
+						QStringLiteral("limit_popup"),
+						[statusPtr, startPtr](bool ok,
+								      const PixelionAddonApi::CheckoutError &error) {
+							if (startPtr)
+								startPtr->setIdleLabel(
+									ok || error.action != PixelionAddonApi::
+													CheckoutAction::Retry
+										? QStringLiteral("Buy add-on credits")
+										: QStringLiteral("Retry"));
+							if (!ok) {
+								if (statusPtr)
+									statusPtr->setText(error.message);
+								if (error.action ==
+								    PixelionAddonApi::CheckoutAction::Upgrade)
+									QDesktopServices::openUrl(QUrl(QStringLiteral(
+										"https://pixelion.ai/pricing")));
+								else if (error.action ==
+									 PixelionAddonApi::CheckoutAction::Account)
+									QDesktopServices::openUrl(QUrl(QStringLiteral(
+										"https://pixelion.ai/account")));
+							}
+						});
+					return;
+				}
+				const QString plan = auth->plan().trimmed().toLower();
+				if (*limitActionState == QStringLiteral("duration") && !plan.isEmpty() &&
+				    plan != QStringLiteral("free"))
+					beginSession(false);
+				else
+					QDesktopServices::openUrl(QUrl(QStringLiteral("https://pixelion.ai/pricing")));
 				return;
 			}
-			if (*limitActionState == QStringLiteral("account")) {
-				QDesktopServices::openUrl(QUrl(QStringLiteral("https://pixelion.ai/account")));
+			if (session->isRunning()) {
+				session->stop();
 				return;
 			}
-			if (*limitActionState == QStringLiteral("buy")) {
-				addon->openCheckout(
-					QStringLiteral("limit_popup"),
-					[statusPtr, startPtr](bool ok, const PixelionAddonApi::CheckoutError &error) {
-						if (startPtr)
-							startPtr->setIdleLabel(ok || error.action != PixelionAddonApi::CheckoutAction::Retry
-										       ? QStringLiteral("Buy add-on credits")
-										       : QStringLiteral("Retry"));
-						if (!ok) {
-							if (statusPtr)
-								statusPtr->setText(error.message);
-							if (error.action == PixelionAddonApi::CheckoutAction::Upgrade)
-								QDesktopServices::openUrl(QUrl(QStringLiteral("https://pixelion.ai/pricing")));
-							else if (error.action == PixelionAddonApi::CheckoutAction::Account)
-								QDesktopServices::openUrl(QUrl(QStringLiteral("https://pixelion.ai/account")));
-						}
-					});
-				return;
-			}
-			const QString plan = auth->plan().trimmed().toLower();
-			if (*limitActionState == QStringLiteral("duration") && !plan.isEmpty() &&
-			    plan != QStringLiteral("free"))
-				beginSession(false);
-			else
-				QDesktopServices::openUrl(QUrl(QStringLiteral("https://pixelion.ai/pricing")));
-			return;
-		}
-		if (session->isRunning()) {
-			session->stop();
-			return;
-		}
-		beginSession(false);
-	});
+			beginSession(false);
+		});
 	auto autoStarted = std::make_shared<bool>(false);
 	autoStartHandler = [session, autoStartPtr = QPointer<QCheckBox>(autoStart), beginSession,
 			    autoStarted](bool obsActive) {
@@ -2857,14 +2867,19 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 				const auto &limit = session->lastLimit();
 				const auto &ent = addon->entitlements();
 				if (allowanceReached && limit.code == QStringLiteral("MINUTES_LIMIT")) {
-					const bool canBuy = limit.hasCanBuyAddons ? limit.canBuyAddons : ent.addonEligible;
+					const bool canBuy = limit.hasCanBuyAddons ? limit.canBuyAddons
+										  : ent.addonEligible;
 					if (canBuy) {
 						const QString price = PixelionAddonApi::priceText(ent);
 						*limitActionState = QStringLiteral("buy");
 						idleLabel = QStringLiteral("Buy add-on credits");
-						message = QStringLiteral("You have used your monthly minutes. Add-on credits%1 "
-									 "roll over and stay valid for 12 months.")
-								  .arg(price.isEmpty() ? QString() : QStringLiteral(" (%1)").arg(price));
+						message =
+							QStringLiteral(
+								"You have used your monthly minutes. Add-on credits%1 "
+								"roll over and stay valid for 12 months.")
+								.arg(price.isEmpty()
+									     ? QString()
+									     : QStringLiteral(" (%1)").arg(price));
 					} else if (ent.known && ent.tier == QStringLiteral("pro") &&
 						   ent.subscriptionStatus != QStringLiteral("active")) {
 						*limitActionState = QStringLiteral("account");
@@ -2919,7 +2934,8 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 					++styleRevision;
 				}
 				const QString transcript = finalizeLocalTranscript();
-				if (autoSaveTranscriptToPixelion && auth->isSignedIn() && !transcript.trimmed().isEmpty())
+				if (autoSaveTranscriptToPixelion && auth->isSignedIn() &&
+				    !transcript.trimmed().isEmpty())
 					saveTranscriptToPixelion(auth, libraryNetwork,
 								 hasError ? QPointer<QLabel>() : statusPtr,
 								 transcriptSessionId, transcriptMode,

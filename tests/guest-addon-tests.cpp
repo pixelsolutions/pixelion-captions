@@ -22,7 +22,10 @@ void check(bool ok, const char *what)
 	}
 }
 
-QByteArray bytes(const char *text) { return QByteArray(text); }
+QByteArray bytes(const char *text)
+{
+	return QByteArray(text);
+}
 } // namespace
 
 int main(int argc, char **argv)
@@ -39,7 +42,8 @@ int main(int argc, char **argv)
 		      bytes(R"({"from_second":0,"session_id":"sess-1","to_second":60,"visitor_id":"123e4567-e89b-42d3-a456-426614174000"})"),
 	      "golden guest usage-check body");
 	check(entitlementsUrl(visitor).toString() ==
-		      QStringLiteral("https://api.pixelion.ai/guest/entitlements?visitor_id=123e4567-e89b-42d3-a456-426614174000"),
+		      QStringLiteral(
+			      "https://api.pixelion.ai/guest/entitlements?visitor_id=123e4567-e89b-42d3-a456-426614174000"),
 	      "guest entitlements URL");
 	check(!jsonPostRequest(QStringLiteral("/guest/realtime-token"), 1000).hasRawHeader("Authorization"),
 	      "guest request carries no Authorization header");
@@ -52,16 +56,17 @@ int main(int argc, char **argv)
 
 	// ---- GET /guest/entitlements parsing ----
 	Usage u;
-	check(parseEntitlements(200,
-				bytes(R"({"plan_id":"guest_v1","tier":"guest","guest_lifetime_seconds":600,"guest_used_seconds":120,"guest_remaining_seconds":480})"),
-				&u) &&
+	check(parseEntitlements(
+		      200,
+		      bytes(R"({"plan_id":"guest_v1","tier":"guest","guest_lifetime_seconds":600,"guest_used_seconds":120,"guest_remaining_seconds":480})"),
+		      &u) &&
 		      u.lifetimeSeconds == 600 && u.usedSeconds == 120 && u.remainingSeconds == 480,
 	      "200 with used and remaining");
-	check(parseEntitlements(200, bytes(R"({"tier":"guest","guest_lifetime_seconds":600})"), &u) && u.lifetimeSeconds == 600 &&
-		      u.usedSeconds == -1 && u.remainingSeconds == -1,
+	check(parseEntitlements(200, bytes(R"({"tier":"guest","guest_lifetime_seconds":600})"), &u) &&
+		      u.lifetimeSeconds == 600 && u.usedSeconds == -1 && u.remainingSeconds == -1,
 	      "200 without used/remaining leaves them unknown, not zero");
-	check(parseEntitlements(200, bytes(R"({"tier":"guest","guest_used_seconds":30})"), &u) && u.lifetimeSeconds == -1 &&
-		      effectiveLifetimeSeconds(u) == kDefaultLifetimeSeconds,
+	check(parseEntitlements(200, bytes(R"({"tier":"guest","guest_used_seconds":30})"), &u) &&
+		      u.lifetimeSeconds == -1 && effectiveLifetimeSeconds(u) == kDefaultLifetimeSeconds,
 	      "missing total falls back to 10 minutes");
 	check(!parseEntitlements(400, bytes(R"({"code":"INVALID_VISITOR_ID"})"), &u), "400 is unavailable");
 	check(!parseEntitlements(500, bytes(R"({"code":"INTERNAL_ERROR"})"), &u), "500 is unavailable");
@@ -119,24 +124,30 @@ int main(int argc, char **argv)
 	      "entitlements parse");
 	check(priceText(e) == QStringLiteral("from $5.00 for 125 minutes"), "price text comes from the catalog");
 	check(formatMinutes(e.minutesRemaining) == QStringLiteral("595.56"), "remaining rounds down, not up");
-	check(formatMinutes(125) == QStringLiteral("125") && formatMinutes(12.5) == QStringLiteral("12.5"), "trailing zeros trimmed");
-	check(e.packs.size() == 1 && formatMinutes(e.packs[0].remainingMinutes) == QStringLiteral("85.99"), "pack remaining rounds down");
+	check(formatMinutes(125) == QStringLiteral("125") && formatMinutes(12.5) == QStringLiteral("12.5"),
+	      "trailing zeros trimmed");
+	check(e.packs.size() == 1 && formatMinutes(e.packs[0].remainingMinutes) == QStringLiteral("85.99"),
+	      "pack remaining rounds down");
 	check(packText(e.packs[0]).contains(QStringLiteral("85.99 left")), "pack row text");
-	check(parseEntitlements(200, bytes(R"({"tier":"pro","addons":{"available":false}})"), &e) && !e.addonsAvailable &&
-		      e.heldMinutes == 0.0,
+	check(parseEntitlements(200, bytes(R"({"tier":"pro","addons":{"available":false}})"), &e) &&
+		      !e.addonsAvailable && e.heldMinutes == 0.0,
 	      "unavailable balance is flagged, not zeroed");
 	check(parseEntitlements(200, bytes(R"({"tier":"free"})"), &e) && !e.addonEligible && priceText(e).isEmpty(),
 	      "free plan: no buy, no price");
 	check(!parseEntitlements(500, bytes(""), &e), "entitlements failure");
-	check(checkoutBody(QStringLiteral("limit_popup")) == bytes(R"({"medium":"limit_popup","platform":"obs_plugin"})"),
+	check(checkoutBody(QStringLiteral("limit_popup")) ==
+		      bytes(R"({"medium":"limit_popup","platform":"obs_plugin"})"),
 	      "golden checkout body");
 	check(checkoutUrl(200, bytes(R"({"checkout_url":"https://pixelion.ai/checkout?x=1","expires_at":1})")) ==
 		      QStringLiteral("https://pixelion.ai/checkout?x=1"),
 	      "checkout url");
-	check(checkoutUrl(200, bytes(R"({"checkout_url":"http://evil"})")).isEmpty(), "non-https checkout url rejected");
-	check(checkoutError(403, bytes(R"({"code":"ADDON_FREE_PLAN"})")).action == CheckoutAction::Upgrade, "free plan -> upgrade");
+	check(checkoutUrl(200, bytes(R"({"checkout_url":"http://evil"})")).isEmpty(),
+	      "non-https checkout url rejected");
+	check(checkoutError(403, bytes(R"({"code":"ADDON_FREE_PLAN"})")).action == CheckoutAction::Upgrade,
+	      "free plan -> upgrade");
 	check(checkoutError(403, bytes(R"({"code":"ADDON_TRIAL"})")).action == CheckoutAction::None, "trial -> none");
-	check(checkoutError(403, bytes(R"({"code":"ADDON_NOT_OFFERED"})")).action == CheckoutAction::None, "not offered -> none");
+	check(checkoutError(403, bytes(R"({"code":"ADDON_NOT_OFFERED"})")).action == CheckoutAction::None,
+	      "not offered -> none");
 	check(checkoutError(403, bytes(R"({"code":"ADDON_NO_ACTIVE_SUBSCRIPTION"})")).action == CheckoutAction::Account,
 	      "inactive -> account page");
 	check(checkoutError(500, bytes("")).action == CheckoutAction::Retry, "5xx -> retry");

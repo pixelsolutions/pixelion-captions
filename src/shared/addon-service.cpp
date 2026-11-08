@@ -20,7 +20,10 @@ constexpr int kPollAttempts = 12; // 12 x 5 s = 60 s
 } // namespace
 
 PixelionAddonService::PixelionAddonService(PixelionAuthService *auth, QObject *parent)
-	: QObject(parent), auth_(auth), network_(new QNetworkAccessManager(this)), pollTimer_(new QTimer(this))
+	: QObject(parent),
+	  auth_(auth),
+	  network_(new QNetworkAccessManager(this)),
+	  pollTimer_(new QTimer(this))
 {
 	pollTimer_->setInterval(kPollIntervalMs);
 	connect(pollTimer_, &QTimer::timeout, this, [this] { pollOnce(); });
@@ -62,7 +65,8 @@ void PixelionAddonService::refresh()
 	auth_->withAccessToken([this, generation](bool ok, const QString &access, const QString &) {
 		if (!ok || generation != refreshGeneration_)
 			return;
-		QNetworkRequest request(QUrl(QStringLiteral(PIXELION_API_BASE_URL) + QStringLiteral("/me/entitlements")));
+		QNetworkRequest request(
+			QUrl(QStringLiteral(PIXELION_API_BASE_URL) + QStringLiteral("/me/entitlements")));
 		request.setRawHeader("Authorization", QByteArray("Bearer ") + access.toUtf8());
 		request.setTransferTimeout(10000);
 		auto *reply = network_->get(request);
@@ -74,7 +78,8 @@ void PixelionAddonService::refresh()
 				return;
 			PixelionAddonApi::Entitlements fresh;
 			if (!PixelionAddonApi::parseEntitlements(status, body, &fresh)) {
-				PixelionDebugLog::write("WARNING", QStringLiteral("Entitlements unavailable (HTTP %1)").arg(status));
+				PixelionDebugLog::write(
+					"WARNING", QStringLiteral("Entitlements unavailable (HTTP %1)").arg(status));
 				return; // keep the last known balance
 			}
 			entitlements_ = fresh;
@@ -87,7 +92,8 @@ void PixelionAddonService::openCheckout(const QString &medium, CheckoutCallback 
 {
 	if (!auth_ || !auth_->isSignedIn()) {
 		if (callback)
-			callback(false, {QStringLiteral("Sign in to Pixelion to add credits."), PixelionAddonApi::CheckoutAction::None});
+			callback(false, {QStringLiteral("Sign in to Pixelion to add credits."),
+					 PixelionAddonApi::CheckoutAction::None});
 		return;
 	}
 	// A fresh link every press: links expire after 10 minutes and are never cached.
@@ -97,7 +103,8 @@ void PixelionAddonService::openCheckout(const QString &medium, CheckoutCallback 
 				callback(false, PixelionAddonApi::checkoutError(0, QByteArray()));
 			return;
 		}
-		QNetworkRequest request(QUrl(QStringLiteral(PIXELION_API_BASE_URL) + QStringLiteral("/me/addon-checkout-link")));
+		QNetworkRequest request(
+			QUrl(QStringLiteral(PIXELION_API_BASE_URL) + QStringLiteral("/me/addon-checkout-link")));
 		request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
 		request.setRawHeader("Authorization", QByteArray("Bearer ") + access.toUtf8());
 		request.setTransferTimeout(15000);
@@ -108,7 +115,8 @@ void PixelionAddonService::openCheckout(const QString &medium, CheckoutCallback 
 			reply->deleteLater();
 			const QString url = PixelionAddonApi::checkoutUrl(status, body);
 			if (url.isEmpty() || !QDesktopServices::openUrl(QUrl(url))) {
-				PixelionDebugLog::write("ERROR", QStringLiteral("Add-on checkout link failed (HTTP %1)").arg(status));
+				PixelionDebugLog::write(
+					"ERROR", QStringLiteral("Add-on checkout link failed (HTTP %1)").arg(status));
 				if (callback)
 					callback(false, PixelionAddonApi::checkoutError(status, body));
 				return;

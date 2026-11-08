@@ -111,8 +111,10 @@ void PixelionGuestService::refresh()
 		PixelionGuestApi::Usage fresh;
 		if (!PixelionGuestApi::parseEntitlements(status, body, &fresh)) {
 			// Unavailable: keep the last known value, then the 10 minute default.
-			PixelionDebugLog::write("WARNING",
-						QStringLiteral("Guest entitlements unavailable (HTTP %1); using last known value").arg(status));
+			PixelionDebugLog::write(
+				"WARNING",
+				QStringLiteral("Guest entitlements unavailable (HTTP %1); using last known value")
+					.arg(status));
 			notify();
 			return;
 		}

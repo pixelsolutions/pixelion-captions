@@ -32,6 +32,12 @@ if(Qt6_FOUND)
         pixelion-captions-guest-tests
         PRIVATE PIXELION_API_BASE_URL="https://api.pixelion.ai"
     )
-    target_link_libraries(pixelion-captions-guest-tests PRIVATE Qt6::Core Qt6::Network)
-    add_test(NAME pixelion-captions-guest-tests COMMAND pixelion-captions-guest-tests)
+    target_link_libraries(
+        pixelion-captions-guest-tests
+        PRIVATE Qt6::Core Qt6::Network
+    )
+    add_test(
+        NAME pixelion-captions-guest-tests
+        COMMAND pixelion-captions-guest-tests
+    )
 endif()
