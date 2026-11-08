@@ -16,7 +16,7 @@ Captions shown live in a scene, over your webcam and content:
 
 You need OBS Studio on Windows x64 or macOS 13.7 (Ventura) and later, and an internet connection. A free Pixelion.ai account is recommended; you can also try live captions as a guest without an account (transcription only, with a limited free allowance that Pixelion sets on the server). Translation, Pixelion Library saving and add-on credits need an account, and translation needs a Pixelion Pro plan. Available minutes and session limits depend on your subscription.
 
-The plugin has been tested with OBS Studio 32.0.1 and is built against the OBS Studio 31.1.1 development dependencies. Compatibility with other OBS versions has not been confirmed. The macOS build is a universal binary (Apple silicon + Intel). There are no plans for a Linux version.
+The plugin has been tested up to OBS Studio 32.2.2 and is built against the OBS Studio 31.1.1 development dependencies. Compatibility with other OBS versions has not been confirmed. The macOS build is a universal binary (Apple silicon + Intel). There are no plans for a Linux version.
 
 ## Install
 
