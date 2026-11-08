@@ -82,14 +82,18 @@ int main(int argc, char **argv)
 	check(effectiveLifetimeSeconds(known) == 900 && effectiveUsedSeconds(known) == 300, "last known value kept");
 	check(effectiveLifetimeSeconds(Usage()) == 600, "no value at all shows 10 minutes");
 	check(effectiveUsedSeconds(Usage()) == -1, "unknown used is never shown as 0");
-	check(offerText(Usage()) == QStringLiteral("Try 10 minutes of free live captions. No account needed."),
-	      "default hint text");
+	check(offerText(Usage()) == QStringLiteral("Try Pixelion Captions for 10 minutes"), "default hint text");
+	Usage ten;
+	ten.lifetimeSeconds = 600;
+	check(offerText(ten) == QStringLiteral("Try Pixelion Captions for 10 minutes"),
+	      "10 minute server allowance gives the 10 minute title");
 	Usage one;
 	one.lifetimeSeconds = 60;
-	check(offerText(one).contains(QStringLiteral("1 minute ")), "singular minute");
+	check(offerText(one) == QStringLiteral("Try Pixelion Captions for 1 minute"), "singular minute");
 	Usage twenty;
 	twenty.lifetimeSeconds = 1200;
-	check(offerText(twenty).contains(QStringLiteral("20 minutes")), "server value is shown, not hardcoded");
+	check(offerText(twenty) == QStringLiteral("Try Pixelion Captions for 20 minutes"),
+	      "server value is shown, not hardcoded");
 
 	// ---- merge / exhausted ----
 	Usage merged = merge(known, Usage{-1, -1, 100});

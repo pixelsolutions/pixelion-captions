@@ -133,7 +133,7 @@ inline QString minutesText(int minutes)
 inline QString offerText(const Usage &usage)
 {
 	const int minutes = std::max(1, wholeMinutes(effectiveLifetimeSeconds(usage)));
-	return QStringLiteral("Try %1 of free live captions. No account needed.").arg(minutesText(minutes));
+	return QStringLiteral("Try Pixelion Captions for %1").arg(minutesText(minutes));
 }
 
 // UUID v4 text, as the API requires.
