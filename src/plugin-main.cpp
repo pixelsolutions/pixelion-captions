@@ -3,6 +3,7 @@
 #include <plugin-support.h>
 #include <util/platform.h>
 
+#include "account-tier.h"
 #include "addon-service.h"
 #include "auth-service.h"
 #include "feedback-dialog.h"
@@ -61,6 +62,7 @@
 #include <QSizePolicy>
 #include <QSaveFile>
 #include <QScrollArea>
+#include <QStackedWidget>
 #include <QStandardPaths>
 #include <QSpinBox>
 #include <QSignalBlocker>
@@ -350,12 +352,6 @@ private:
 	QTimer clockTimer_;
 	bool running_ = false;
 };
-
-int maximumTranscriptionMinutesForPlan(const QString &plan)
-{
-	const QString normalizedPlan = plan.trimmed().toLower();
-	return normalizedPlan == QStringLiteral("pro") || normalizedPlan == QStringLiteral("hero") ? 120 : 30;
-}
 
 bool loadAutoStartSetting()
 {
@@ -2057,6 +2053,22 @@ bool resetCaptionArea(QLabel *status)
 	return true;
 }
 
+// Opens the Pro checkout page in the system browser. `medium` records where the
+// click came from (limit banner, account card) for attribution only.
+void openProCheckout(PixelionAuthService *auth, const QString &medium)
+{
+	QUrl checkoutUrl(QStringLiteral("https://pixelion.ai/checkout"));
+	QUrlQuery query;
+	query.addQueryItem(QStringLiteral("plan"), QStringLiteral("pro"));
+	query.addQueryItem(QStringLiteral("utm_source"), QStringLiteral("obs_plugin"));
+	query.addQueryItem(QStringLiteral("utm_medium"), medium);
+	query.addQueryItem(QStringLiteral("utm_campaign"), QStringLiteral("duration_limit"));
+	if (!auth->userId().isEmpty())
+		query.addQueryItem(QStringLiteral("user_id"), auth->userId());
+	checkoutUrl.setQuery(query);
+	QDesktopServices::openUrl(checkoutUrl);
+}
+
 QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *session, PixelionGuestService *guest,
 			    PixelionAddonService *addon)
 {
@@ -2075,6 +2087,17 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	scroll->setAutoFillBackground(true);
 	scroll->viewport()->setBackgroundRole(QPalette::Window);
 	scroll->viewport()->setAutoFillBackground(true);
+	// Main page: a fixed header (brand, status, timer, Start) above the scrolling sidebar.
+	auto *mainPage = new QWidget(root);
+	auto *mainLayout = new QVBoxLayout(mainPage);
+	mainLayout->setContentsMargins(0, 0, 0, 0);
+	mainLayout->setSpacing(10);
+	auto *stickyHeader = new QWidget(mainPage);
+	auto *headerLayout = new QVBoxLayout(stickyHeader);
+	headerLayout->setContentsMargins(0, 0, 0, 0);
+	headerLayout->setSpacing(10);
+	mainLayout->addWidget(stickyHeader);
+	mainLayout->addWidget(scroll, 1);
 	auto *content = new QWidget(scroll);
 	content->setMinimumWidth(0);
 	content->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
@@ -2123,12 +2146,12 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	settingsButton->setToolTip(QStringLiteral("Transcript settings"));
 	settingsButton->setAccessibleName(QStringLiteral("Transcript settings"));
 	brandLayout->addWidget(settingsButton, 0, Qt::AlignTop);
-	layout->addWidget(brandRow);
+	headerLayout->addWidget(brandRow);
 	auto *brandAccent = new QFrame(content);
 	brandAccent->setFixedHeight(3);
 	brandAccent->setStyleSheet(QStringLiteral(
 		"border: 0; border-radius: 1px; background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7828a8, stop:0.55 #e5007d, stop:1 #ffca05);"));
-	layout->addWidget(brandAccent);
+	headerLayout->addWidget(brandAccent);
 
 	auto *statusRow = new QWidget(content);
 	auto *statusLayout = new QHBoxLayout(statusRow);
@@ -2147,29 +2170,7 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	statusContainerLayout->setContentsMargins(0, 0, 0, 0);
 	statusContainerLayout->setSpacing(4);
 	statusContainerLayout->addWidget(statusRow);
-	auto *upgradeButtonRow = new QWidget(statusContainer);
-	auto *upgradeButtonLayout = new QHBoxLayout(upgradeButtonRow);
-	upgradeButtonLayout->setContentsMargins(16, 0, 0, 0);
-	upgradeButtonLayout->setSpacing(0);
-	auto *upgradeButton = new QPushButton(QStringLiteral("Upgrade"), upgradeButtonRow);
-	upgradeButton->setFixedSize(92, 24);
-	upgradeButton->setVisible(false);
-	upgradeButtonLayout->addWidget(upgradeButton, 0, Qt::AlignLeft);
-	upgradeButtonLayout->addStretch(1);
-	statusContainerLayout->addWidget(upgradeButtonRow);
-	layout->addWidget(statusContainer);
-	QObject::connect(upgradeButton, &QPushButton::clicked, root, [auth] {
-		QUrl checkoutUrl(QStringLiteral("https://pixelion.ai/checkout"));
-		QUrlQuery query;
-		query.addQueryItem(QStringLiteral("plan"), QStringLiteral("pro"));
-		query.addQueryItem(QStringLiteral("utm_source"), QStringLiteral("obs_plugin"));
-		query.addQueryItem(QStringLiteral("utm_medium"), QStringLiteral("limit_banner"));
-		query.addQueryItem(QStringLiteral("utm_campaign"), QStringLiteral("duration_limit"));
-		if (!auth->userId().isEmpty())
-			query.addQueryItem(QStringLiteral("user_id"), auth->userId());
-		checkoutUrl.setQuery(query);
-		QDesktopServices::openUrl(checkoutUrl);
-	});
+	headerLayout->addWidget(statusContainer);
 	auto readiness = std::make_shared<std::function<void()>>();
 	auto limitActionState = std::make_shared<QString>();
 	auto resetGuestCta = std::make_shared<std::function<void()>>();
@@ -2183,25 +2184,90 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	accountHeadingFont.setBold(true);
 	accountHeading->setFont(accountHeadingFont);
 	accountHeaderLayout->addWidget(accountHeading);
+	auto *planBadge = new QLabel(accountHeader);
+	planBadge->setObjectName(QStringLiteral("planBadge"));
+	planBadge->setAlignment(Qt::AlignCenter);
+	planBadge->setStyleSheet(QStringLiteral(
+		"QLabel { background-color: rgba(128, 128, 128, 60); border-radius: 9px; padding: 1px 8px; }"));
+	planBadge->setVisible(false);
+	accountHeaderLayout->addWidget(planBadge, 0, Qt::AlignVCenter);
 	accountHeaderLayout->addStretch(1);
 	layout->addWidget(accountHeader);
 	auto *accountMessage = new QLabel(QStringLiteral("Sign in to Pixelion to start a live session."), content);
 	accountMessage->setObjectName(QStringLiteral("mutedText"));
 	accountMessage->setWordWrap(true);
 	layout->addWidget(accountMessage);
-	auto *signIn = new QPushButton(QStringLiteral("Sign in"), content);
-	signIn->setEnabled(true);
-	layout->addWidget(signIn);
-	auto *createAccount = new QPushButton(QStringLiteral("Create account"), content);
+
+	// Welcome screen: the first thing a signed-out user sees. The session
+	// controls live on the main page and only appear once the user has signed
+	// in or chosen to continue as a guest.
+	auto *welcomePage = new QWidget(root);
+	welcomePage->setObjectName(QStringLiteral("pixelionWelcome"));
+	auto *welcomeLayout = new QVBoxLayout(welcomePage);
+	welcomeLayout->setContentsMargins(8, 24, 8, 8);
+	welcomeLayout->setSpacing(10);
+	welcomeLayout->addStretch(1);
+	auto *welcomeLogo = new QLabel(welcomePage);
+	welcomeLogo->setFixedSize(64, 64);
+	welcomeLogo->setAlignment(Qt::AlignCenter);
+	welcomeLogo->setPixmap(QPixmap(QStringLiteral(":/pixelion/logo.png"))
+				       .scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+	welcomeLogo->setAccessibleName(QStringLiteral("Pixelion logo"));
+	welcomeLayout->addWidget(welcomeLogo, 0, Qt::AlignHCenter);
+	auto *welcomeTitle = new QLabel(QStringLiteral("Pixelion Captions"), welcomePage);
+	QFont welcomeTitleFont = welcomeTitle->font();
+	welcomeTitleFont.setPointSize(16);
+	welcomeTitleFont.setBold(true);
+	welcomeTitle->setFont(welcomeTitleFont);
+	welcomeTitle->setAlignment(Qt::AlignCenter);
+	welcomeLayout->addWidget(welcomeTitle);
+	auto *welcomeTagline =
+		new QLabel(QStringLiteral("Live captions and translation for your OBS scenes."), welcomePage);
+	welcomeTagline->setObjectName(QStringLiteral("mutedText"));
+	welcomeTagline->setWordWrap(true);
+	welcomeTagline->setAlignment(Qt::AlignCenter);
+	welcomeLayout->addWidget(welcomeTagline);
+	welcomeLayout->addSpacing(12);
+	auto *createAccount = new QPushButton(QStringLiteral("Create free account"), welcomePage);
 	createAccount->setEnabled(true);
-	layout->addWidget(createAccount);
-	auto *continueAsGuest = new QPushButton(QStringLiteral("Continue as guest"), content);
-	continueAsGuest->setToolTip(QStringLiteral("Try live captions without an account."));
-	layout->addWidget(continueAsGuest);
-	auto *guestHint = new QLabel(PixelionGuestApi::offerText(guest->usage()), content);
+	createAccount->setMinimumHeight(34);
+	createAccount->setStyleSheet(QStringLiteral(
+		"QPushButton { background-color: #4876bd; color: #ffffff; border: 0; border-radius: 6px; font-weight: bold; }"
+		"QPushButton:hover { background-color: #5a88d0; }"
+		"QPushButton:pressed { background-color: #3a64a6; }"));
+	welcomeLayout->addWidget(createAccount);
+	auto *signIn = new QPushButton(QStringLiteral("Sign in"), welcomePage);
+	signIn->setEnabled(true);
+	signIn->setMinimumHeight(34);
+	welcomeLayout->addWidget(signIn);
+	auto *welcomeStatus = new QLabel(welcomePage);
+	welcomeStatus->setObjectName(QStringLiteral("mutedText"));
+	welcomeStatus->setWordWrap(true);
+	welcomeStatus->setAlignment(Qt::AlignCenter);
+	welcomeStatus->setAccessibleName(QStringLiteral("Sign-in status"));
+	welcomeStatus->setVisible(false);
+	welcomeLayout->addWidget(welcomeStatus);
+	welcomeLayout->addSpacing(8);
+	auto *guestHint = new QLabel(PixelionGuestApi::offerText(guest->usage()), welcomePage);
 	guestHint->setObjectName(QStringLiteral("mutedText"));
 	guestHint->setWordWrap(true);
-	layout->addWidget(guestHint);
+	guestHint->setAlignment(Qt::AlignCenter);
+	welcomeLayout->addWidget(guestHint);
+	auto *continueAsGuest = new QPushButton(QStringLiteral("Continue as guest"), welcomePage);
+	continueAsGuest->setToolTip(QStringLiteral("Try live captions without an account."));
+	continueAsGuest->setFlat(true);
+	continueAsGuest->setCursor(Qt::PointingHandCursor);
+	continueAsGuest->setStyleSheet(
+		QStringLiteral("QPushButton { border: 0; text-decoration: underline; padding: 4px; }"));
+	welcomeLayout->addWidget(continueAsGuest);
+	welcomeLayout->addStretch(2);
+	auto *welcomePrivacy =
+		new QLabel(QStringLiteral("<a href=\"https://pixelion.ai/privacy\">Privacy policy</a>"), welcomePage);
+	welcomePrivacy->setOpenExternalLinks(true);
+	welcomePrivacy->setAlignment(Qt::AlignCenter);
+	welcomePrivacy->setTextInteractionFlags(Qt::LinksAccessibleByMouse | Qt::LinksAccessibleByKeyboard);
+	welcomeLayout->addWidget(welcomePrivacy);
+	auto *pages = new QStackedWidget(root);
 	auto *usageSummary = new QLabel(content);
 	usageSummary->setObjectName(QStringLiteral("mutedText"));
 	usageSummary->setWordWrap(true);
@@ -2215,6 +2281,25 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	usageBar->setAccessibleName(QStringLiteral("Live caption minutes used"));
 	usageBar->setVisible(false);
 	layout->addWidget(usageBar);
+	// Free near-limit warning (80 %): informational text, never blocking.
+	auto *nearLimitLabel = new QLabel(content);
+	nearLimitLabel->setObjectName(QStringLiteral("mutedText"));
+	nearLimitLabel->setWordWrap(true);
+	nearLimitLabel->setAccessibleName(QStringLiteral("Plan limit warning"));
+	nearLimitLabel->setVisible(false);
+	layout->addWidget(nearLimitLabel);
+	// The one purchase button the account card may show: Create account for a
+	// guest, Upgrade to Pro for Free, nothing for Pro.
+	auto *tierCta = new QPushButton(content);
+	tierCta->setVisible(false);
+	layout->addWidget(tierCta);
+	// Guests can still sign in to an existing account from the main page.
+	auto *guestSignIn = new QLabel(QStringLiteral("Already have an account? <a href=\"signin\">Sign in</a>"), content);
+	guestSignIn->setObjectName(QStringLiteral("mutedText"));
+	guestSignIn->setTextInteractionFlags(Qt::LinksAccessibleByMouse | Qt::LinksAccessibleByKeyboard);
+	guestSignIn->setVisible(false);
+	layout->addWidget(guestSignIn);
+	QObject::connect(guestSignIn, &QLabel::linkActivated, root, [auth] { auth->signIn(false); });
 	auto *creditsBox = new QWidget(content);
 	auto *creditsLayout = new QVBoxLayout(creditsBox);
 	creditsLayout->setContentsMargins(0, 0, 0, 0);
@@ -2224,13 +2309,24 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	creditsHeadingFont.setBold(true);
 	creditsHeading->setFont(creditsHeadingFont);
 	creditsLayout->addWidget(creditsHeading);
+	auto *creditsBar = new QProgressBar(creditsBox);
+	creditsBar->setRange(0, 100);
+	creditsBar->setValue(0);
+	creditsBar->setTextVisible(false);
+	creditsBar->setFixedHeight(8);
+	creditsBar->setAccessibleName(QStringLiteral("Add-on credit minutes used"));
+	creditsBar->setVisible(false);
+	creditsLayout->addWidget(creditsBar);
 	auto *creditsText = new QLabel(creditsBox);
 	creditsText->setObjectName(QStringLiteral("mutedText"));
 	creditsText->setWordWrap(true);
 	creditsText->setTextFormat(Qt::PlainText);
 	creditsLayout->addWidget(creditsText);
-	auto *addCredits = new QPushButton(QStringLiteral("Add credits"), creditsBox);
-	creditsLayout->addWidget(addCredits);
+	auto *addCreditsLink = new QLabel(QStringLiteral("<a href=\"add-credits\">Add credits</a>"), creditsBox);
+	addCreditsLink->setTextInteractionFlags(Qt::LinksAccessibleByMouse | Qt::LinksAccessibleByKeyboard);
+	addCreditsLink->setAccessibleName(QStringLiteral("Add credits"));
+	addCreditsLink->setVisible(false);
+	creditsLayout->addWidget(addCreditsLink);
 	auto *retryCredits = new QPushButton(QStringLiteral("Retry"), creditsBox);
 	creditsLayout->addWidget(retryCredits);
 	creditsBox->setVisible(false);
@@ -2239,7 +2335,7 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	layout->addWidget(historyButton);
 	QObject::connect(historyButton, &QPushButton::clicked, root,
 			 [root, auth, libraryNetwork] { openTranscriptHistory(root, auth, libraryNetwork); });
-	QObject::connect(settingsButton, &QPushButton::clicked, root, [root, auth, session] {
+	QObject::connect(settingsButton, &QPushButton::clicked, root, [root, auth, session, addon] {
 		QDialog dialog(root);
 		dialog.setWindowTitle(QStringLiteral("Transcript settings"));
 		dialog.setModal(true);
@@ -2338,6 +2434,33 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 			accountGroup);
 		identity->setWordWrap(true);
 		accountLayout->addWidget(identity);
+		auto *accountLinks = new QLabel(
+			QStringLiteral("<a href=\"account\">Pixelion account</a>&nbsp;&nbsp;&nbsp;<a href=\"subscription\">Manage subscription</a>"),
+			accountGroup);
+		accountLinks->setTextInteractionFlags(Qt::LinksAccessibleByMouse | Qt::LinksAccessibleByKeyboard);
+		accountLinks->setAccessibleName(QStringLiteral("Account links"));
+		accountLinks->setVisible(auth->isSignedIn());
+		accountLayout->addWidget(accountLinks);
+		auto *accountLinksStatus = new QLabel(accountGroup);
+		accountLinksStatus->setObjectName(QStringLiteral("mutedText"));
+		accountLinksStatus->setWordWrap(true);
+		accountLinksStatus->setVisible(false);
+		accountLayout->addWidget(accountLinksStatus);
+		QObject::connect(accountLinks, &QLabel::linkActivated, &dialog,
+				 [addon, statusPtr = QPointer<QLabel>(accountLinksStatus)](const QString &target) {
+					 if (target == QStringLiteral("account")) {
+						 QDesktopServices::openUrl(QUrl(QStringLiteral("https://pixelion.ai/account")));
+						 return;
+					 }
+					 if (statusPtr)
+						 statusPtr->setVisible(false);
+					 addon->openBillingPortal([statusPtr](bool ok, const QString &message) {
+						 if (!statusPtr)
+							 return;
+						 statusPtr->setText(message);
+						 statusPtr->setVisible(!ok && !message.isEmpty());
+					 });
+				 });
 		auto *signOut = new QPushButton(QStringLiteral("Sign out"), accountGroup);
 		signOut->setEnabled(auth->isSignedIn());
 		accountLayout->addWidget(signOut);
@@ -2378,47 +2501,203 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 			saveTranscriptSettings();
 		}
 	});
-	// Guest (no-account) view: sign-in view shows "Continue as guest"; guest mode
-	// shows the server-reported allowance and keeps sign-in one click away.
-	auto guestUi = std::make_shared<std::function<void()>>();
-	*guestUi = [auth, guest, readiness, guestButtonPtr = QPointer<QPushButton>(continueAsGuest),
-		    guestHintPtr = QPointer<QLabel>(guestHint), accountPtr = QPointer<QLabel>(accountMessage),
-		    usageSummaryPtr = QPointer<QLabel>(usageSummary), usageBarPtr = QPointer<QProgressBar>(usageBar)] {
+	// One renderer for the whole account card, for every tier: the guest
+	// allowance or the plan minutes, the status-area bar, the Free near-limit
+	// warning, the tier's single purchase button and the add-on credit bar.
+	// The guest, usage, entitlement and sign-in callbacks all call this.
+	auto lastUsage = std::make_shared<PixelionAuthService::UsageInfo>();
+	auto cardActionState = std::make_shared<PixelionAccountTier::Action>(PixelionAccountTier::Action::None);
+	auto accountUi = std::make_shared<std::function<void()>>();
+	*accountUi = [auth, guest, addon, readiness, lastUsage, cardActionState,
+		      guestButtonPtr = QPointer<QPushButton>(continueAsGuest),
+		      guestHintPtr = QPointer<QLabel>(guestHint), accountPtr = QPointer<QLabel>(accountMessage),
+		      createAccountPtr = QPointer<QPushButton>(createAccount), planBadgePtr = QPointer<QLabel>(planBadge),
+		      usageSummaryPtr = QPointer<QLabel>(usageSummary), usageBarPtr = QPointer<QProgressBar>(usageBar),
+		      warningPtr = QPointer<QLabel>(nearLimitLabel), ctaPtr = QPointer<QPushButton>(tierCta),
+		      creditsBoxPtr = QPointer<QWidget>(creditsBox), creditsTextPtr = QPointer<QLabel>(creditsText),
+		      creditsBarPtr = QPointer<QProgressBar>(creditsBar),
+		      pagesPtr = QPointer<QStackedWidget>(pages), welcomePtr = QPointer<QWidget>(welcomePage),
+		      mainPtr = QPointer<QWidget>(mainPage), guestSignInPtr = QPointer<QLabel>(guestSignIn),
+		      retryPtr = QPointer<QPushButton>(retryCredits), addCreditsPtr = QPointer<QLabel>(addCreditsLink)] {
+		using namespace PixelionAccountTier;
 		const bool signedIn = auth->isSignedIn();
 		const bool guestMode = !signedIn && guest->active();
+		// Signed out and not a guest: the welcome screen. Otherwise the main page.
+		if (pagesPtr && welcomePtr && mainPtr)
+			pagesPtr->setCurrentWidget(signedIn || guestMode ? mainPtr.data() : welcomePtr.data());
+		if (guestSignInPtr)
+			guestSignInPtr->setVisible(guestMode);
+		const auto &entitlements = addon->entitlements();
+		const Tier tier = classify(signedIn, guest->active(), auth->plan(),
+					   entitlements.known ? entitlements.tier : QString());
+		if (planBadgePtr) {
+			const QString badge = tierLabel(tier);
+			planBadgePtr->setText(badge);
+			planBadgePtr->setVisible(!badge.isEmpty());
+		}
+
+		if (signedIn && accountPtr) {
+			// The session cap comes from the plan's own limits, never a constant.
+			const QString planName = auth->plan().isEmpty() ? QStringLiteral("Free") : auth->plan();
+			QString text = QStringLiteral("%1\n%2 plan · Pixelion account").arg(auth->email(), planName);
+			if (entitlements.sessionCapMinutes > 0)
+				text += QStringLiteral("\nMaximum transcription length: up to %1 minutes")
+						.arg(entitlements.sessionCapMinutes);
+			accountPtr->setText(text);
+		}
 		if (guestButtonPtr)
 			guestButtonPtr->setVisible(!signedIn && !guestMode);
 		if (guestHintPtr) {
 			guestHintPtr->setVisible(!signedIn && !guestMode);
 			guestHintPtr->setText(PixelionGuestApi::offerText(guest->usage()));
 		}
-		if (guestMode && accountPtr && usageSummaryPtr && usageBarPtr) {
-			accountPtr->setText(QStringLiteral(
-				"Using Pixelion as a guest. Create a free account for more minutes, translation and Pixelion Library saving."));
+		// In guest mode the card's own Create account button is the call to
+		// action, so the sign-in view's copy of it is hidden.
+		if (createAccountPtr)
+			createAccountPtr->setVisible(!signedIn && !guestMode);
+
+		LimitState state = LimitState::Unknown;
+		int barLimit = 0;
+		int barValue = 0;
+		int remainingMinutes = 0;
+		const auto credits = creditTotals(entitlements);
+		if (tier == Tier::Guest) {
 			const int total = PixelionGuestApi::effectiveLifetimeSeconds(guest->usage());
 			const int used = PixelionGuestApi::effectiveUsedSeconds(guest->usage());
 			const int totalMinutes = std::max(1, PixelionGuestApi::wholeMinutes(total));
-			if (used >= 0) {
-				const int remaining = PixelionGuestApi::wholeMinutes(std::max(0, total - used));
-				usageSummaryPtr->setText(QStringLiteral("%1 of %2 free guest minutes left")
-								 .arg(remaining)
-								 .arg(totalMinutes));
-				usageBarPtr->setRange(0, total);
-				usageBarPtr->setValue(std::min(used, total));
-				usageBarPtr->setVisible(true);
-			} else {
-				usageSummaryPtr->setText(QStringLiteral("%1 of free live captions")
-								 .arg(PixelionGuestApi::minutesText(totalMinutes)));
-				usageBarPtr->setVisible(false);
+			state = limitState(used >= 0, false, used, total);
+			if (accountPtr)
+				accountPtr->setText(QStringLiteral(
+					"Using Pixelion as a guest. Create a free account for more minutes, translation and Pixelion Library saving."));
+			if (usageSummaryPtr) {
+				if (state == LimitState::Unknown) {
+					usageSummaryPtr->setText(
+						QStringLiteral("%1 of free live captions")
+							.arg(PixelionGuestApi::minutesText(totalMinutes)));
+				} else {
+					remainingMinutes = PixelionGuestApi::wholeMinutes(std::max(0, total - used));
+					usageSummaryPtr->setText(QStringLiteral("%1 of %2 free guest minutes left")
+									 .arg(remainingMinutes)
+									 .arg(totalMinutes));
+				}
+				usageSummaryPtr->setVisible(true);
 			}
-			usageSummaryPtr->setVisible(true);
+			if (state != LimitState::Unknown) {
+				barLimit = total;
+				barValue = std::min(std::max(0, used), total);
+			}
+		} else if (signedIn) {
+			const auto &usage = *lastUsage;
+			state = limitState(usage.known && !usage.loading, usage.unlimited, usage.usedMinutes,
+					   usage.limitMinutes);
+			if (usage.loading) {
+				if (usageSummaryPtr) {
+					usageSummaryPtr->setText(QStringLiteral("Loading available minutes…"));
+					usageSummaryPtr->setVisible(true);
+				}
+			} else if (!usage.known) {
+				if (usageSummaryPtr)
+					usageSummaryPtr->setVisible(false);
+			} else if (usage.unlimited) {
+				if (usageSummaryPtr) {
+					usageSummaryPtr->setText(QStringLiteral("Unlimited minutes"));
+					usageSummaryPtr->setVisible(true);
+				}
+			} else {
+				remainingMinutes = std::max(0, usage.limitMinutes - usage.usedMinutes);
+				barLimit = std::max(0, usage.limitMinutes);
+				barValue = std::min(std::max(0, usage.usedMinutes), barLimit);
+				QString summary = QStringLiteral("%1 of %2 used")
+							  .arg(PixelionAddonApi::formatMinutes(usage.usedMinutesExact))
+							  .arg(usage.limitMinutes);
+				// Available minutes = plan minutes + add-on minutes.
+				if (credits.hasCredits)
+					summary += QStringLiteral("\n%1 minutes available in total (plan + credits)")
+							   .arg(PixelionAddonApi::formatMinutes(availableMinutes(
+								   remainingMinutes, credits.remainingMinutes)));
+				if (usageSummaryPtr) {
+					usageSummaryPtr->setText(summary);
+					usageSummaryPtr->setVisible(true);
+				}
+			}
+		} else if (usageSummaryPtr) {
+			usageSummaryPtr->setVisible(false);
+		}
+
+		const bool showBar = barLimit > 0;
+		if (usageBarPtr) {
+			if (showBar) {
+				usageBarPtr->setRange(0, barLimit);
+				usageBarPtr->setValue(barValue);
+			}
+			usageBarPtr->setVisible(showBar);
+		}
+		if (warningPtr) {
+			const bool warn = tier == Tier::Free && state == LimitState::NearLimit;
+			if (warn)
+				warningPtr->setText(PixelionAccountTier::nearLimitWarning(remainingMinutes));
+			warningPtr->setVisible(warn);
+		}
+		// Guest and Free keep their button at every state; Pro has none here.
+		*cardActionState = cardAction(tier);
+		if (ctaPtr) {
+			const QString label = actionLabel(*cardActionState);
+			if (!label.isEmpty()) {
+				ctaPtr->setText(label);
+				ctaPtr->setAccessibleName(label);
+			}
+			ctaPtr->setVisible(*cardActionState != Action::None);
+		}
+
+		// Add-on credits (issue #7): second bar, balance rows, retry. No buy
+		// button here: Pro's only purchase button is in the limit message.
+		if (creditsBoxPtr && creditsTextPtr && creditsBarPtr && retryPtr) {
+			const bool show = signedIn && entitlements.known &&
+					  (!entitlements.packs.isEmpty() || entitlements.addonEligible ||
+					   !entitlements.addonsAvailable);
+			creditsBoxPtr->setVisible(show);
+			if (show) {
+				QStringList lines;
+				if (!entitlements.addonsAvailable) {
+					lines << QStringLiteral("Your balance is temporarily unavailable.");
+				} else {
+					for (const auto &pack : entitlements.packs)
+						lines << PixelionAddonApi::packText(pack);
+					if (credits.hasCredits)
+						lines << QStringLiteral("%1 of %2 credit minutes left")
+								 .arg(PixelionAddonApi::formatMinutes(
+									      credits.remainingMinutes),
+								      PixelionAddonApi::formatMinutes(
+									      credits.purchasedMinutes));
+					else if (entitlements.hasMinutesRemaining)
+						lines << QStringLiteral("Total available: %1 minutes")
+								 .arg(PixelionAddonApi::formatMinutes(
+									 entitlements.minutesRemaining));
+				}
+				creditsTextPtr->setText(lines.join(QLatin1Char('\n')));
+				const int creditLimit = static_cast<int>(std::floor(credits.purchasedMinutes));
+				const bool showCredits = credits.hasCredits && creditLimit > 0;
+				if (showCredits) {
+					creditsBarPtr->setRange(0, creditLimit);
+					creditsBarPtr->setValue(std::min(
+						creditLimit, static_cast<int>(std::floor(credits.usedMinutes))));
+				}
+				creditsBarPtr->setVisible(showCredits);
+				retryPtr->setVisible(!entitlements.addonsAvailable);
+				if (addCreditsPtr)
+					addCreditsPtr->setVisible(entitlements.addonEligible && entitlements.addonsAvailable);
+			}
 		}
 		if (readiness && *readiness)
 			(*readiness)();
 	};
-	guest->setChangedCallback([guestUi] {
-		if (guestUi && *guestUi)
-			(*guestUi)();
+	guest->setChangedCallback([accountUi] {
+		if (accountUi && *accountUi)
+			(*accountUi)();
+	});
+	addon->setChangedCallback([accountUi] {
+		if (accountUi && *accountUi)
+			(*accountUi)();
 	});
 	QObject::connect(continueAsGuest, &QPushButton::clicked, root, [guest] {
 		PixelionDebugLog::write("INFO", QStringLiteral("Continuing as guest"));
@@ -2426,57 +2705,42 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		guest->refresh();
 	});
 	guest->refresh();
-
-	// Add-on credits (issue #7): balance, buy button, packs.
-	const auto updateCredits = [auth, addon, boxPtr = QPointer<QWidget>(creditsBox),
-				    textPtr = QPointer<QLabel>(creditsText), addPtr = QPointer<QPushButton>(addCredits),
-				    retryPtr = QPointer<QPushButton>(retryCredits)] {
-		if (!boxPtr || !textPtr || !addPtr || !retryPtr)
-			return;
-		const auto &e = addon->entitlements();
-		const bool show = auth->isSignedIn() && e.known &&
-				  (!e.packs.isEmpty() || e.addonEligible || !e.addonsAvailable);
-		boxPtr->setVisible(show);
-		if (!show)
-			return;
-		QStringList lines;
-		if (!e.addonsAvailable) {
-			lines << QStringLiteral("Your balance is temporarily unavailable.");
-		} else {
-			for (const auto &pack : e.packs)
-				lines << PixelionAddonApi::packText(pack);
-			if (e.packs.isEmpty() && e.addonEligible) {
-				const QString price = PixelionAddonApi::priceText(e);
-				lines << QStringLiteral(
-						 "Add credits%1. Credits roll over and stay valid for 12 months.")
-						 .arg(price.isEmpty() ? QString() : QStringLiteral(" ") + price);
-			}
-			if (e.hasMinutesRemaining)
-				lines << QStringLiteral("Total available: %1 minutes")
-						 .arg(PixelionAddonApi::formatMinutes(e.minutesRemaining));
-		}
-		textPtr->setText(lines.join(QLatin1Char('\n')));
-		addPtr->setVisible(e.addonEligible && e.addonsAvailable);
-		retryPtr->setVisible(!e.addonsAvailable);
-	};
-	addon->setChangedCallback(updateCredits);
 	QObject::connect(retryCredits, &QPushButton::clicked, root, [addon] { addon->refresh(); });
-	QObject::connect(addCredits, &QPushButton::clicked, root, [addon, textPtr = QPointer<QLabel>(creditsText)] {
-		addon->openCheckout(QStringLiteral("account_page"),
-				    [textPtr](bool ok, const PixelionAddonApi::CheckoutError &error) {
-					    if (!ok && textPtr)
-						    textPtr->setText(error.message);
-				    });
+	QObject::connect(addCreditsLink, &QLabel::linkActivated, root,
+			 [addon, textPtr = QPointer<QLabel>(creditsText)](const QString &) {
+				 addon->openCheckout(QStringLiteral("account_page"),
+						     [textPtr](bool ok, const PixelionAddonApi::CheckoutError &error) {
+							     if (!ok && textPtr)
+								     textPtr->setText(error.message);
+						     });
+			 });
+	QObject::connect(tierCta, &QPushButton::clicked, root, [auth, cardActionState] {
+		switch (*cardActionState) {
+		case PixelionAccountTier::Action::CreateAccount:
+			auth->signIn(true);
+			break;
+		case PixelionAccountTier::Action::UpgradeToPro:
+			openProCheckout(auth, QStringLiteral("account_card"));
+			break;
+		case PixelionAccountTier::Action::AddCredits:
+		case PixelionAccountTier::Action::None:
+			break;
+		}
 	});
 	QObject::connect(signIn, &QPushButton::clicked, root, [auth] { auth->signIn(false); });
 	QObject::connect(createAccount, &QPushButton::clicked, root, [auth] { auth->signIn(true); });
 	QPointer<QLabel> accountLabel = accountMessage;
 	QPointer<QPushButton> signInButton = signIn;
-	QPointer<QPushButton> createAccountButton = createAccount;
-	auth->setStateCallback([accountLabel, signInButton, createAccountButton,
-				upgradeButtonPtr = QPointer<QPushButton>(upgradeButton), readiness, guest, addon,
-				guestUi,
+	auth->setStateCallback([accountLabel, signInButton,
+				welcomeStatusPtr = QPointer<QLabel>(welcomeStatus), readiness, guest, addon, accountUi,
 				resetGuestCta](const QString &email, const QString &plan, const QString &message) {
+		if (welcomeStatusPtr) {
+			// Sign-in progress and errors show on the welcome screen too.
+			const bool hint = email.isEmpty() && !message.isEmpty() &&
+					  !message.startsWith(QStringLiteral("Sign in to Pixelion"));
+			welcomeStatusPtr->setText(message);
+			welcomeStatusPtr->setVisible(hint);
+		}
 		const QString normalized = message.toLower();
 		if (normalized.contains(QStringLiteral("could not")) || normalized.contains(QStringLiteral("failed")) ||
 		    normalized.contains(QStringLiteral("error")) || normalized.contains(QStringLiteral("rejected")) ||
@@ -2484,25 +2748,11 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 			PixelionDebugLog::write("ERROR", QStringLiteral("Account: %1").arg(message));
 		else if (!email.isEmpty() && message == QStringLiteral("Signed in to Pixelion."))
 			PixelionDebugLog::write("INFO", QStringLiteral("Pixelion sign-in succeeded"));
-		if (accountLabel) {
-			const QString planName = plan.isEmpty() ? QStringLiteral("Free") : plan;
-			accountLabel->setText(
-				email.isEmpty()
-					? message
-					: QStringLiteral(
-						  "%1\n%2 plan · Pixelion account\nMaximum transcription length: up to %3 minutes")
-						  .arg(email, planName)
-						  .arg(maximumTranscriptionMinutesForPlan(planName)));
-		}
+		if (accountLabel && email.isEmpty())
+			accountLabel->setText(message);
 		const bool signedIn = !email.isEmpty();
-		const QString normalizedPlan = plan.trimmed().toLower();
-		if (upgradeButtonPtr &&
-		    (!signedIn || (!normalizedPlan.isEmpty() && normalizedPlan != QStringLiteral("free"))))
-			upgradeButtonPtr->setVisible(false);
 		if (signInButton)
 			signInButton->setVisible(!signedIn);
-		if (createAccountButton)
-			createAccountButton->setVisible(!signedIn);
 		if (signedIn) {
 			guest->setActive(false);
 			if (!addon->entitlements().known || message == QStringLiteral("Signed in to Pixelion."))
@@ -2512,45 +2762,17 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 		}
 		if (signedIn && resetGuestCta && *resetGuestCta)
 			(*resetGuestCta)();
-		if (guestUi && *guestUi)
-			(*guestUi)();
+		if (accountUi && *accountUi)
+			(*accountUi)();
 		if (readiness && *readiness)
 			(*readiness)();
 		if (signedIn && autoStartHandler)
 			autoStartHandler(streamingActive || recordingActive);
 	});
-	auth->setUsageCallback([usageSummaryPtr = QPointer<QLabel>(usageSummary),
-				usageBarPtr = QPointer<QProgressBar>(usageBar), auth,
-				guest](const PixelionAuthService::UsageInfo &usage) {
-		if (!usageSummaryPtr || !usageBarPtr)
-			return;
-		if (guest->active() && !auth->isSignedIn())
-			return; // the guest allowance is shown instead
-		if (usage.loading) {
-			usageSummaryPtr->setText(QStringLiteral("Loading available minutes…"));
-			usageSummaryPtr->setVisible(true);
-			usageBarPtr->setVisible(false);
-		} else if (!usage.known) {
-			usageSummaryPtr->setVisible(false);
-			usageBarPtr->setVisible(false);
-		} else if (usage.unlimited) {
-			usageSummaryPtr->setText(QStringLiteral("Unlimited minutes"));
-			usageSummaryPtr->setVisible(true);
-			usageBarPtr->setVisible(false);
-		} else {
-			const int remaining = std::max(0, usage.limitMinutes - usage.usedMinutes);
-			const QString period = usage.periodKind == QStringLiteral("trial")
-						       ? QStringLiteral("in your trial")
-						       : QStringLiteral("this month");
-			usageSummaryPtr->setText(QStringLiteral("%1 of %2 minutes remaining %3")
-							 .arg(remaining)
-							 .arg(usage.limitMinutes)
-							 .arg(period));
-			usageSummaryPtr->setVisible(true);
-			usageBarPtr->setRange(0, usage.limitMinutes);
-			usageBarPtr->setValue(usage.usedMinutes);
-			usageBarPtr->setVisible(true);
-		}
+	auth->setUsageCallback([lastUsage, accountUi](const PixelionAuthService::UsageInfo &usage) {
+		*lastUsage = usage;
+		if (accountUi && *accountUi)
+			(*accountUi)();
 	});
 
 	auto *sessionHeading = new QLabel(QStringLiteral("Start a session"), content);
@@ -2673,7 +2895,7 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	sessionStatusLayout->addStretch(1);
 	sessionControlsLayout->addWidget(sessionStatusRow);
 	sessionControlsLayout->addWidget(start);
-	layout->addWidget(sessionControls);
+	headerLayout->addWidget(sessionControls);
 	*resetGuestCta = [limitActionState, startPtr = QPointer<SpinnerButton>(start)] {
 		if (*limitActionState == QStringLiteral("guest")) {
 			limitActionState->clear();
@@ -2716,12 +2938,14 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 			return false;
 		}
 		if (!auth->isSignedIn() && guest->exhausted()) {
-			const QString message = PixelionGuestApi::limitMessage();
+			// Guest limit: the message and a Create account button on the
+			// main button, instead of a modal dialog over OBS.
+			const QString message = PixelionGuestApi::limitMessage() +
+						QStringLiteral(" Create a free account to keep going.");
 			status->setText(message);
-			if (!automatic)
-				QMessageBox::information(
-					root, QStringLiteral("Pixelion Captions"),
-					message + QStringLiteral(" Create a free account to keep going."));
+			*limitActionState = QStringLiteral("guest");
+			start->setIdleLabel(
+				PixelionAccountTier::actionLabel(PixelionAccountTier::Action::CreateAccount));
 			return false;
 		}
 		PixelionDebugLog::write("INFO",
@@ -2764,7 +2988,9 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 								startPtr->setIdleLabel(
 									ok || error.action != PixelionAddonApi::
 													CheckoutAction::Retry
-										? QStringLiteral("Buy add-on credits")
+										? PixelionAccountTier::actionLabel(
+											  PixelionAccountTier::Action::
+												  AddCredits)
 										: QStringLiteral("Retry"));
 							if (!ok) {
 								if (statusPtr)
@@ -2781,9 +3007,11 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 						});
 					return;
 				}
-				const QString plan = auth->plan().trimmed().toLower();
-				if (*limitActionState == QStringLiteral("duration") && !plan.isEmpty() &&
-				    plan != QStringLiteral("free"))
+				const auto &ent = addon->entitlements();
+				const auto tier = PixelionAccountTier::classify(auth->isSignedIn(), false, auth->plan(),
+										ent.known ? ent.tier : QString());
+				if (*limitActionState == QStringLiteral("duration") &&
+				    tier == PixelionAccountTier::Tier::Pro)
 					beginSession(false);
 				else
 					QDesktopServices::openUrl(QUrl(QStringLiteral("https://pixelion.ai/pricing")));
@@ -2812,7 +3040,7 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	};
 	session->setCallbacks(
 		[statusPtr = QPointer<QLabel>(status), statusDotPtr = QPointer<QLabel>(statusDot),
-		 upgradeButtonPtr = QPointer<QPushButton>(upgradeButton), startPtr = QPointer<SpinnerButton>(start),
+		 startPtr = QPointer<SpinnerButton>(start),
 		 activePtr = QPointer<ActiveSessionIndicator>(activeSessionIndicator),
 		 timerPtr = QPointer<SessionElapsedTimer>(sessionTimer), readiness, auth, libraryNetwork,
 		 limitActionState, session, addon](bool running, const QString &rawMessage) {
@@ -2827,11 +3055,6 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 					      normalized.contains(QStringLiteral("rejected")) || requiresPro ||
 					      normalized.contains(QStringLiteral("used up")) ||
 					      normalized.contains(QStringLiteral("limit has been reached"));
-			const QString currentPlan = auth->plan().trimmed().toLower();
-			if (upgradeButtonPtr)
-				upgradeButtonPtr->setVisible(
-					requiresPro && auth->isSignedIn() &&
-					(currentPlan.isEmpty() || currentPlan == QStringLiteral("free")));
 			if (hasError)
 				PixelionDebugLog::write("ERROR", QStringLiteral("Session: %1").arg(message));
 			else
@@ -2854,25 +3077,31 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 				message = PixelionGuestApi::limitMessage() +
 					  QStringLiteral(" Create a free account to keep going.");
 				if (startPtr)
-					startPtr->setIdleLabel(QStringLiteral("Create a free account"));
+					startPtr->setIdleLabel(PixelionAccountTier::actionLabel(
+						PixelionAccountTier::Action::CreateAccount));
 			} else if (limitReached || allowanceReached) {
-				const QString plan = auth->plan().trimmed().toLower();
-				const bool freeTier = plan.isEmpty() || plan == QStringLiteral("free");
+				const auto &ent = addon->entitlements();
+				const auto tier = PixelionAccountTier::classify(auth->isSignedIn(), false, auth->plan(),
+										ent.known ? ent.tier : QString());
+				const bool freeTier = tier == PixelionAccountTier::Tier::Free;
 				*limitActionState = allowanceReached ? QStringLiteral("allowance")
 								     : QStringLiteral("duration");
-				QString idleLabel = allowanceReached ? (freeTier ? QStringLiteral("Upgrade plan")
-										 : QStringLiteral("View plan"))
-								     : (freeTier ? QStringLiteral("Upgrade plan")
+				QString idleLabel = freeTier ? PixelionAccountTier::actionLabel(
+								       PixelionAccountTier::Action::UpgradeToPro)
+							     : (allowanceReached ? QStringLiteral("View plan")
 										 : QStringLiteral("Start new session"));
 				const auto &limit = session->lastLimit();
-				const auto &ent = addon->entitlements();
 				if (allowanceReached && limit.code == QStringLiteral("MINUTES_LIMIT")) {
+					// Pro's one purchase button: add-on credits, when the
+					// server says this account may buy them.
 					const bool canBuy = limit.hasCanBuyAddons ? limit.canBuyAddons
 										  : ent.addonEligible;
-					if (canBuy) {
+					if (PixelionAccountTier::limitAction(tier, canBuy) ==
+					    PixelionAccountTier::Action::AddCredits) {
 						const QString price = PixelionAddonApi::priceText(ent);
 						*limitActionState = QStringLiteral("buy");
-						idleLabel = QStringLiteral("Buy add-on credits");
+						idleLabel = PixelionAccountTier::actionLabel(
+							PixelionAccountTier::Action::AddCredits);
 						message =
 							QStringLiteral(
 								"You have used your monthly minutes. Add-on credits%1 "
@@ -3093,7 +3322,11 @@ QWidget *createDockContents(PixelionAuthService *auth, PixelionLiveSession *sess
 	layout->addLayout(footerLinks);
 	layout->addStretch(1);
 	scroll->setWidget(content);
-	outer->addWidget(scroll);
+	pages->addWidget(welcomePage);
+	pages->addWidget(mainPage);
+	outer->addWidget(pages);
+	if (accountUi && *accountUi)
+		(*accountUi)(); // pick the starting page (welcome until signed in or guest)
 	for (QWidget *control : content->findChildren<QWidget *>()) {
 		if (qobject_cast<QComboBox *>(control) || qobject_cast<QSpinBox *>(control) ||
 		    qobject_cast<QPushButton *>(control) || qobject_cast<QToolButton *>(control) ||

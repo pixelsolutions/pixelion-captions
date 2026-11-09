@@ -1,4 +1,5 @@
 #include "feedback-dialog.h"
+#include "feedback-api.h"
 #include <plugin-support.h>
 
 #include <QButtonGroup>
@@ -134,21 +135,21 @@ void showFeedbackDialog(QWidget *parent)
 		if (type->currentIndex() <= 0 || message->toPlainText().trimmed().isEmpty() || rating <= 0 ||
 		    !emailValid())
 			return;
-		QString reason =
-			QStringLiteral("[%1] %2 | satisfaction: %3/5 (%4) | platform: obs_plugin | version: %5")
-				.arg(type->currentData().toString(), message->toPlainText().trimmed())
-				.arg(rating)
-				.arg(levels[rating - 1], QString::fromUtf8(PLUGIN_VERSION));
+		// POST /feedback on api.pixelion.ai (pixelion-api pixelion-feedback). The server
+		// has no email or category field, so the category and the optional contact email
+		// are kept in the message text.
+		const QString category = type->currentData().toString();
+		QString text = QStringLiteral("[%1] %2").arg(category, message->toPlainText().trimmed());
 		if (!email->text().trimmed().isEmpty())
-			reason += QStringLiteral(" | email: ") + email->text().trimmed();
-		QNetworkRequest request(
-			QUrl(QStringLiteral("https://izxjmtbo5b.execute-api.us-east-1.amazonaws.com/prod/report-ai")));
+			text += QStringLiteral("\n\nContact email: ") + email->text().trimmed();
+		QNetworkRequest request(QUrl(QStringLiteral("https://api.pixelion.ai/feedback")));
 		request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
 		request.setTransferTimeout(30000);
-		const QJsonObject body{{QStringLiteral("content_type"), QStringLiteral("feedback")},
-				       {QStringLiteral("reason"), reason},
-				       {QStringLiteral("content_snippet"), QString()},
-				       {QStringLiteral("job_id"), QJsonValue(QJsonValue::Null)}};
+		const QJsonObject body{{QStringLiteral("type"), feedbackTypeForServer(category)},
+				       {QStringLiteral("message"), text},
+				       {QStringLiteral("rating"), rating},
+				       {QStringLiteral("platform"), QStringLiteral("obs_plugin")},
+				       {QStringLiteral("app_version"), QString::fromUtf8(PLUGIN_VERSION)}};
 		for (QWidget *field : QList<QWidget *>{type, message, email, details})
 			field->setEnabled(false);
 		for (auto *radio : ratings->buttons())

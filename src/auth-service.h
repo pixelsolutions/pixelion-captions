@@ -22,6 +22,7 @@ public:
 		bool known = false;
 		bool unlimited = false;
 		int usedMinutes = 0;
+		double usedMinutesExact = 0.0; // unrounded server value, shown as-is in the usage line
 		int limitMinutes = 0;
 		QString periodKind;
 	};

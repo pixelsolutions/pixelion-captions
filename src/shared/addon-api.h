@@ -33,6 +33,9 @@ struct Entitlements {
 	QString tier; // guest | free | pro | hero
 	QString subscriptionStatus;
 	bool addonEligible = false;
+	// limits.session_cap_min from GET /me/entitlements: longest single session on
+	// this plan, in minutes. 0 when the server does not report it.
+	int sessionCapMinutes = 0;
 	// addon settings (null when the plan does not offer add-ons)
 	bool hasAddonSettings = false;
 	double priceCentsPerMinute = 0.0;
@@ -92,6 +95,8 @@ inline bool parseEntitlements(int status, const QByteArray &body, Entitlements *
 	e.tier = root.value(QStringLiteral("tier")).toString();
 	e.subscriptionStatus = root.value(QStringLiteral("subscription_status")).toString();
 	e.addonEligible = root.value(QStringLiteral("addon_eligible")).toBool(false);
+	const auto limits = root.value(QStringLiteral("limits")).toObject();
+	e.sessionCapMinutes = static_cast<int>(limits.value(QStringLiteral("session_cap_min")).toDouble(0.0));
 	const auto addon = root.value(QStringLiteral("addon"));
 	if (addon.isObject()) {
 		const auto settings = addon.toObject();

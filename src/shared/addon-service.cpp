@@ -1,4 +1,5 @@
 #include "addon-service.h"
+#include "billing-portal.h"
 #include "auth-service.h"
 #include "plugin-debug-log.h"
 
@@ -124,6 +125,41 @@ void PixelionAddonService::openCheckout(const QString &medium, CheckoutCallback 
 			awaitingReturn_ = true;
 			pollBaselineHeld_ = entitlements_.heldMinutes;
 			pollBaselinePacks_ = static_cast<int>(entitlements_.packs.size());
+			if (callback)
+				callback(true, {});
+		});
+	});
+}
+
+void PixelionAddonService::openBillingPortal(PortalCallback callback)
+{
+	if (!auth_ || !auth_->isSignedIn()) {
+		if (callback)
+			callback(false, QStringLiteral("Sign in to Pixelion to manage your subscription."));
+		return;
+	}
+	auth_->withAccessToken([this, callback](bool ok, const QString &access, const QString &) {
+		if (!ok) {
+			if (callback)
+				callback(false, PixelionBillingPortal::errorText(0));
+			return;
+		}
+		QNetworkRequest request(QUrl(QStringLiteral(PIXELION_API_BASE_URL) + QStringLiteral("/billing/portal")));
+		request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+		request.setRawHeader("Authorization", QByteArray("Bearer ") + access.toUtf8());
+		request.setTransferTimeout(15000);
+		auto *reply = network_->post(request, QByteArray("{}"));
+		connect(reply, &QNetworkReply::finished, this, [reply, callback] {
+			const QByteArray body = reply->readAll().left(64 * 1024);
+			const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+			reply->deleteLater();
+			const QString url = PixelionBillingPortal::portalUrlFromBody(status, body);
+			if (url.isEmpty() || !QDesktopServices::openUrl(QUrl(url))) {
+				PixelionDebugLog::write("ERROR", QStringLiteral("Billing portal link failed (HTTP %1)").arg(status));
+				if (callback)
+					callback(false, PixelionBillingPortal::errorText(status));
+				return;
+			}
 			if (callback)
 				callback(true, {});
 		});

@@ -30,6 +30,10 @@ public:
 	void clear();
 	// medium: "limit_popup" (from a limit message) or "account_page" (usage screen).
 	void openCheckout(const QString &medium, CheckoutCallback callback);
+	// Opens the Stripe billing portal for the signed-in account (POST /billing/portal).
+	// callback(false, message) shows the failure copy; the portal opens on success.
+	using PortalCallback = std::function<void(bool ok, const QString &message)>;
+	void openBillingPortal(PortalCallback callback);
 
 private:
 	void notify() const;
