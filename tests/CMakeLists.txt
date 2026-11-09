@@ -52,4 +52,16 @@ if(Qt6_FOUND)
         NAME pixelion-captions-account-tier-tests
         COMMAND pixelion-captions-account-tier-tests
     )
+
+    # Feedback category to POST /feedback type mapping (src/shared/feedback-api.h).
+    add_executable(pixelion-captions-feedback-api-tests feedback-api-tests.cpp)
+    target_include_directories(
+        pixelion-captions-feedback-api-tests
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src/shared"
+    )
+    target_link_libraries(pixelion-captions-feedback-api-tests PRIVATE Qt6::Core)
+    add_test(
+        NAME pixelion-captions-feedback-api-tests
+        COMMAND pixelion-captions-feedback-api-tests
+    )
 endif()
