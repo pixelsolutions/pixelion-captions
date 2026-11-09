@@ -225,6 +225,7 @@ void PixelionAuthService::refreshUsage()
 					usage.known = true;
 					usage.limitMinutes = limit;
 					usage.usedMinutes = limit - remaining;
+					usage.usedMinutesExact = std::max(0.0, usedValue.toDouble());
 				}
 			}
 			publishUsage(usage.known ? usage : UsageInfo{});
@@ -238,6 +239,7 @@ void PixelionAuthService::updateUsageRemainingMinutes(int remainingMinutes)
 		return;
 	const int remaining = std::clamp(remainingMinutes, 0, usageInfo_.limitMinutes);
 	usageInfo_.usedMinutes = usageInfo_.limitMinutes - remaining;
+	usageInfo_.usedMinutesExact = usageInfo_.usedMinutes;
 	if (usageCallback_)
 		usageCallback_(usageInfo_);
 }
