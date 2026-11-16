@@ -17,7 +17,7 @@ Pick your operating system:
 |---|---|
 | OBS Studio | Tested up to 32.2.2 (built against 31.1.1 dependencies). Other versions are not confirmed. |
 | Platform | Windows x64, or macOS 13.7 (Ventura) and later (universal: Apple silicon + Intel) |
-| Account | A free Pixelion.ai account |
+| Account | A free Pixelion.ai account is recommended. You can also try transcription as a guest without an account, with a limited free allowance. |
 | Network | An internet connection for live transcription and translation |
 | Translation | A Pixelion Pro plan (transcription works on the free plan) |
 
